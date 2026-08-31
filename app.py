@@ -12,9 +12,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. Custom CSS 및 Gmarket Sans 폰트 설정
+# 2. Custom CSS 및 Gmarket Sans 폰트 설정 (.arrow_right 충돌 및 겹침 완벽 방지)
 st.markdown("""
 <style>
+    /* Gmarket Sans 폰트 안전 로드 */
     @font-face {
         font-family: 'GmarketSans';
         src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff2') format('woff2');
@@ -28,15 +29,15 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* 일반 텍스트에만 폰트 적용 (Streamlit 내부 아이콘/클래스 제외) */
-    html, body, p, span:not([class*="st-"]), label, input, button, select {
+    /* 일반 텍스트 요소에만 Gmarket Sans 폰트 지정 */
+    body, p, label, input, button, select, div[data-testid="stMarkdownContainer"] p {
         font-family: 'GmarketSans', -apple-system, sans-serif !important;
-        font-weight: 500 !important;
+        font-weight: 500;
         color: #1e293b;
     }
 
-    /* Streamlit 아이콘 및 익스팬더 화살표 클래스 충돌 방지 */
-    [class*="st-"] *, [data-testid="stExpanderToggleIcon"], .streamlit-expanderHeader span {
+    /* Streamlit 내부 아이콘/화살표 클래스(.arrow_right 등) 폰트 덮어쓰기 방지 */
+    i, svg, [class*="st-"], [data-testid="stExpanderToggleIcon"], .material-icons {
         font-family: inherit;
     }
 
@@ -44,6 +45,7 @@ st.markdown("""
         background-color: #f8fafc;
     }
     
+    /* 대제목 - Bold (700) */
     .dashboard-header, h1, h2, .section-bold-title {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 700 !important;
@@ -55,6 +57,7 @@ st.markdown("""
         margin-bottom: 6px;
     }
 
+    /* 세부분류 및 서브 타이틀 - Medium (500) */
     .dashboard-subtitle, h3, h4, h5, .stSidebar h3 {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 500 !important;
@@ -65,12 +68,14 @@ st.markdown("""
         margin-bottom: 22px;
     }
 
+    /* 탭 메뉴 폰트 크기 및 굵기 설정 */
     button[data-baseweb="tab"] div {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 500 !important;
         font-size: 1.05rem !important;
     }
 
+    /* KPI Metric Cards - 가독성 우수 */
     .metric-card {
         background-color: #ffffff;
         border-radius: 14px;
@@ -100,6 +105,7 @@ st.markdown("""
         margin-left: 2px;
     }
 
+    /* 파일 업로드 Expander 헤더 스타일 */
     .streamlit-expanderHeader {
         background-color: #ffffff !important;
         border-radius: 10px !important;
@@ -174,7 +180,7 @@ with st.expander("📂 신규 데이터 갱신 (엑셀/CSV 파일 업로드)", e
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 7. 사이드바 (검색 및 필터링 - placeholder 한글 적용)
+# 7. 사이드바 (검색 및 필터링 - 한글 안내 문구 적용)
 # ---------------------------------------------------------
 st.sidebar.markdown("### 🔍 검색 & 필터링")
 st.sidebar.markdown("---")
@@ -209,7 +215,6 @@ bank_options = sorted(df['입금은행'].dropna().unique()) if '입금은행' in
 sido_options = sorted(df['시도'].dropna().astype(str).unique()) if '시도' in df.columns else []
 category_options = sorted(df['업종구분'].dropna().astype(str).unique()) if '업종구분' in df.columns else []
 
-# Choose options -> 한글 '선택하세요'로 교체
 selected_banks = st.sidebar.multiselect("🏛️ 입금은행", options=bank_options, placeholder="선택하세요")
 selected_sido = st.sidebar.multiselect("🗺️ 지역(시/도)", options=sido_options, placeholder="선택하세요")
 selected_category = st.sidebar.multiselect("🏢 업종구분", options=category_options, placeholder="선택하세요")
@@ -429,29 +434,25 @@ items_per_page = 10
 total_items = len(filtered_df)
 total_pages = math.ceil(total_items / items_per_page) if total_items > 0 else 1
 
-# Session State를 통해 현재 페이지 관리
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 1
 
-# 페이지 범위를 벗어나는 경우 처리
 if st.session_state.current_page > total_pages:
     st.session_state.current_page = total_pages
 if st.session_state.current_page < 1:
     st.session_state.current_page = 1
 
-# 10개 데이터 슬라이싱
 start_idx = (st.session_state.current_page - 1) * items_per_page
 end_idx = start_idx + items_per_page
 page_data = filtered_df[valid_cols].iloc[start_idx:end_idx]
 
-# 데이터 프레임 표출 (10개 높이에 맞게 조절)
 st.dataframe(
     page_data,
     use_container_width=True,
     height=390
 )
 
-# 페이지 이동 UI 컨트롤러
+# 페이지 컨트롤러
 st.markdown("<br>", unsafe_allow_html=True)
 p_col1, p_col2, p_col3 = st.columns([1, 4, 1])
 
@@ -461,7 +462,6 @@ with p_col1:
         st.rerun()
 
 with p_col2:
-    # 하단 1, 2, 3 ... 페이지 번호 선택기
     page_options = list(range(1, total_pages + 1))
     selected_page = st.select_slider(
         "페이지 선택",
