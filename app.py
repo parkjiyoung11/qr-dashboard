@@ -12,10 +12,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. Custom CSS 및 Gmarket Sans 폰트 설정 (.arrow_right 충돌 및 겹침 완벽 방지)
+# 2. Custom CSS 및 Gmarket Sans 폰트 설정
 st.markdown("""
 <style>
-    /* Gmarket Sans 폰트 안전 로드 */
     @font-face {
         font-family: 'GmarketSans';
         src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff2') format('woff2');
@@ -29,14 +28,12 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* 일반 텍스트 요소에만 Gmarket Sans 폰트 지정 */
     body, p, label, input, button, select, div[data-testid="stMarkdownContainer"] p {
         font-family: 'GmarketSans', -apple-system, sans-serif !important;
         font-weight: 500;
         color: #1e293b;
     }
 
-    /* Streamlit 내부 아이콘/화살표 클래스(.arrow_right 등) 폰트 덮어쓰기 방지 */
     i, svg, [class*="st-"], [data-testid="stExpanderToggleIcon"], .material-icons {
         font-family: inherit;
     }
@@ -45,7 +42,6 @@ st.markdown("""
         background-color: #f8fafc;
     }
     
-    /* 대제목 - Bold (700) */
     .dashboard-header, h1, h2, .section-bold-title {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 700 !important;
@@ -57,7 +53,6 @@ st.markdown("""
         margin-bottom: 6px;
     }
 
-    /* 세부분류 및 서브 타이틀 - Medium (500) */
     .dashboard-subtitle, h3, h4, h5, .stSidebar h3 {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 500 !important;
@@ -68,14 +63,12 @@ st.markdown("""
         margin-bottom: 22px;
     }
 
-    /* 탭 메뉴 폰트 크기 및 굵기 설정 */
     button[data-baseweb="tab"] div {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 500 !important;
         font-size: 1.05rem !important;
     }
 
-    /* KPI Metric Cards - 가독성 우수 */
     .metric-card {
         background-color: #ffffff;
         border-radius: 14px;
@@ -105,7 +98,6 @@ st.markdown("""
         margin-left: 2px;
     }
 
-    /* 파일 업로드 Expander 헤더 스타일 */
     .streamlit-expanderHeader {
         background-color: #ffffff !important;
         border-radius: 10px !important;
@@ -180,7 +172,7 @@ with st.expander("📂 신규 데이터 갱신 (엑셀/CSV 파일 업로드)", e
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 7. 사이드바 (검색 및 필터링 - 한글 안내 문구 적용)
+# 7. 사이드바 (검색 및 필터링)
 # ---------------------------------------------------------
 st.sidebar.markdown("### 🔍 검색 & 필터링")
 st.sidebar.markdown("---")
@@ -418,7 +410,7 @@ with tab3:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 10. 상세 거래 내역 데이터 테이블 (페이지네이션 적용)
+# 10. 상세 거래 내역 데이터 테이블 (버튼형 숫자 페이징 적용)
 # ---------------------------------------------------------
 st.markdown(f"<h3 style='font-size:1.25rem;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#64748b; font-weight:500;'>(조회 결과: {len(filtered_df):,} 건)</span></h3>", unsafe_allow_html=True)
 
@@ -429,7 +421,7 @@ display_cols = [
 
 valid_cols = [col for col in display_cols if col in filtered_df.columns]
 
-# --- 페이지네이션 (10개씩 끊어서 보여주기) ---
+# --- 버튼 방식 페이징 계산 ---
 items_per_page = 10
 total_items = len(filtered_df)
 total_pages = math.ceil(total_items / items_per_page) if total_items > 0 else 1
@@ -446,36 +438,66 @@ start_idx = (st.session_state.current_page - 1) * items_per_page
 end_idx = start_idx + items_per_page
 page_data = filtered_df[valid_cols].iloc[start_idx:end_idx]
 
+# 데이터 테이블 표시 (10개 고정)
 st.dataframe(
     page_data,
     use_container_width=True,
     height=390
 )
 
-# 페이지 컨트롤러
 st.markdown("<br>", unsafe_allow_html=True)
-p_col1, p_col2, p_col3 = st.columns([1, 4, 1])
 
-with p_col1:
-    if st.button("⬅️ 이전 페이지", disabled=(st.session_state.current_page == 1)):
+# --- 숫자 버튼 방식 페이징 UI ---
+# 현재 페이지 기준으로 보여줄 버튼 범위 계산 (최대 5개 버튼)
+page_block_size = 5
+start_page = max(1, st.session_state.current_page - (page_block_size // 2))
+end_page = min(total_pages, start_page + page_block_size - 1)
+
+# 범위를 5개로 맞추기 위한 보정
+if end_page - start_page + 1 < page_block_size:
+    start_page = max(1, end_page - page_block_size + 1)
+
+page_numbers = list(range(start_page, end_page + 1))
+
+# 버튼 그리드 컬럼 생성
+cols = st.columns(len(page_numbers) + 4)
+
+# 1. 맨처음 이동 버튼
+with cols[0]:
+    if st.button("⏮️ 처음", disabled=(st.session_state.current_page == 1)):
+        st.session_state.current_page = 1
+        st.rerun()
+
+# 2. 이전 페이지 버튼
+with cols[1]:
+    if st.button("◀ 이전", disabled=(st.session_state.current_page == 1)):
         st.session_state.current_page -= 1
         st.rerun()
 
-with p_col2:
-    page_options = list(range(1, total_pages + 1))
-    selected_page = st.select_slider(
-        "페이지 선택",
-        options=page_options,
-        value=st.session_state.current_page,
-        label_visibility="collapsed"
-    )
-    if selected_page != st.session_state.current_page:
-        st.session_state.current_page = selected_page
-        st.rerun()
+# 3. 숫자 페이지 버튼들 (1, 2, 3, 4, 5...)
+for i, p_num in enumerate(page_numbers):
+    with cols[i + 2]:
+        btn_type = "primary" if p_num == st.session_state.current_page else "secondary"
+        if st.button(f"{p_num}", key=f"page_btn_{p_num}", type=btn_type):
+            st.session_state.current_page = p_num
+            st.rerun()
 
-with p_col3:
-    if st.button("다음 페이지 ➡️", disabled=(st.session_state.current_page == total_pages or total_pages == 0)):
+# 4. 다음 페이지 버튼
+with cols[-2]:
+    if st.button("다음 ▶", disabled=(st.session_state.current_page == total_pages or total_pages == 0)):
         st.session_state.current_page += 1
         st.rerun()
 
-st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 0.9rem;'>페이지 {st.session_state.current_page} / {total_pages} (총 {total_items:,}건)</p>", unsafe_allow_html=True)
+# 5. 맨끝 이동 버튼
+with cols[-1]:
+    if st.button("끝 ⏭️", disabled=(st.session_state.current_page == total_pages or total_pages == 0)):
+        st.session_state.current_page = total_pages
+        st.rerun()
+
+# 하단 정보 안내
+st.markdown(
+    f"<p style='text-align: center; color: #64748b; font-size: 0.95rem; margin-top: 10px;'>"
+    f"페이지 <b>{st.session_state.current_page:,}</b> / {total_pages:,} (총 {total_items:,} 건)"
+    f"</p>",
+    unsafe_allow_html=True
+)
