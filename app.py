@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import math
 
 # 1. 페이지 레이아웃 및 기본 설정
 st.set_page_config(
@@ -11,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. 안전한 Custom CSS 및 Gmarket Sans 폰트 설정
+# 2. Custom CSS 및 Gmarket Sans 폰트 설정
 st.markdown("""
 <style>
     /* Gmarket Sans 폰트 안전 로드 */
@@ -113,7 +114,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 3. 감성 파스텔톤 브랜드 색상 맵 (Soft Pastel Colors)
+# 3. 감성 파스텔톤 브랜드 색상 맵
 BANK_COLOR_MAP = {
     '카카오뱅크': '#FFEAA7',
     '하나은행': '#81ECEC',
@@ -146,7 +147,7 @@ st.markdown('<div class="dashboard-header">💳 QR플레이트 사업자계좌 �
 st.markdown('<div class="dashboard-subtitle">실시간 검색, 금액별/일자별 필터링 및 시각화 분석 리포트</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 6. 엑셀 파일 업로드 창 (버튼/토글 클릭 시 확장되는 영역)
+# 6. 엑셀 파일 업로드 창
 # ---------------------------------------------------------
 with st.expander("📂 신규 데이터 갱신 (엑셀/CSV 파일 업로드)", expanded=False):
     st.markdown("<p style='font-size:0.95rem; color:#475569;'>💡 새로운 데이터가 있는 경우 파일 2개를 업로드하여 대시보드를 갱신할 수 있습니다.</p>", unsafe_allow_html=True)
@@ -174,7 +175,7 @@ with st.expander("📂 신규 데이터 갱신 (엑셀/CSV 파일 업로드)", e
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 7. 사이드바 (검색 및 필터링)
+# 7. 사이드바 (검색 및 필터링 - placeholder 한글 적용)
 # ---------------------------------------------------------
 st.sidebar.markdown("### 🔍 검색 & 필터링")
 st.sidebar.markdown("---")
@@ -198,7 +199,8 @@ deposit_options = sorted(df['입금구분'].dropna().unique()) if '입금구분'
 deposit_type = st.sidebar.multiselect(
     "💵 입금금액 구분",
     options=deposit_options,
-    default=deposit_options
+    default=deposit_options,
+    placeholder="선택하세요"
 )
 
 st.sidebar.markdown("---")
@@ -208,9 +210,10 @@ bank_options = sorted(df['입금은행'].dropna().unique()) if '입금은행' in
 sido_options = sorted(df['시도'].dropna().astype(str).unique()) if '시도' in df.columns else []
 category_options = sorted(df['업종구분'].dropna().astype(str).unique()) if '업종구분' in df.columns else []
 
-selected_banks = st.sidebar.multiselect("🏛️ 입금은행", options=bank_options)
-selected_sido = st.sidebar.multiselect("🗺️ 지역(시/도)", options=sido_options)
-selected_category = st.sidebar.multiselect("🏢 업종구분", options=category_options)
+# Choose options -> 한글 '선택하세요'로 교체
+selected_banks = st.sidebar.multiselect("🏛️ 입금은행", options=bank_options, placeholder="선택하세요")
+selected_sido = st.sidebar.multiselect("🗺️ 지역(시/도)", options=sido_options, placeholder="선택하세요")
+selected_category = st.sidebar.multiselect("🏢 업종구분", options=category_options, placeholder="선택하세요")
 
 # --- 필터링 로직 ---
 filtered_df = df.copy()
@@ -277,7 +280,7 @@ with kpi4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 9. 시각화 차트 섹션 (Plotly 인터랙티브 차트)
+# 9. 시각화 차트 섹션
 # ---------------------------------------------------------
 st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
 
@@ -411,7 +414,7 @@ with tab3:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 10. 상세 거래 내역 데이터 테이블
+# 10. 상세 거래 내역 데이터 테이블 (페이지네이션 적용)
 # ---------------------------------------------------------
 st.markdown(f"<h3 style='font-size:1.25rem;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#64748b; font-weight:500;'>(조회 결과: {len(filtered_df):,} 건)</span></h3>", unsafe_allow_html=True)
 
@@ -422,8 +425,58 @@ display_cols = [
 
 valid_cols = [col for col in display_cols if col in filtered_df.columns]
 
+# --- 페이지네이션 (10개씩 끊어서 보여주기) ---
+items_per_page = 10
+total_items = len(filtered_df)
+total_pages = math.ceil(total_items / items_per_page) if total_items > 0 else 1
+
+# Session State를 통해 현재 페이지 관리
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 1
+
+# 페이지 범위를 벗어나는 경우 처리
+if st.session_state.current_page > total_pages:
+    st.session_state.current_page = total_pages
+if st.session_state.current_page < 1:
+    st.session_state.current_page = 1
+
+# 10개 데이터 슬라이싱
+start_idx = (st.session_state.current_page - 1) * items_per_page
+end_idx = start_idx + items_per_page
+page_data = filtered_df[valid_cols].iloc[start_idx:end_idx]
+
+# 데이터 프레임 표출 (10개 높이에 맞게 조절)
 st.dataframe(
-    filtered_df[valid_cols],
+    page_data,
     use_container_width=True,
-    height=480
+    height=390
 )
+
+# 페이지 이동 UI 컨트롤러
+st.markdown("<br>", unsafe_allow_html=True)
+p_col1, p_col2, p_col3 = st.columns([1, 4, 1])
+
+with p_col1:
+    if st.button("⬅️ 이전 페이지", disabled=(st.session_state.current_page == 1)):
+        st.session_state.current_page -= 1
+        st.rerun()
+
+with p_col2:
+    # 하단 1, 2, 3 ... 페이지 번호 선택기
+    page_options = list(range(1, total_pages + 1))
+    selected_page = st.select_slider(
+        "페이지 선택",
+        options=page_options,
+        value=st.session_state.current_page,
+        label_visibility="collapsed"
+    )
+    if selected_page != st.session_state.current_page:
+        st.session_state.current_page = selected_page
+        st.rerun()
+
+with p_col3:
+    if st.button("다음 페이지 ➡️", disabled=(st.session_state.current_page == total_pages or total_pages == 0)):
+        st.session_state.current_page += 1
+        st.rerun()
+
+st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 0.9rem;'>페이지 {st.session_state.current_page} / {total_pages} (총 {total_items:,}건)</p>", unsafe_allow_html=True)
