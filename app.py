@@ -11,20 +11,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. 고급스러운 Custom CSS 및 Gmarket Sans 폰트 설정
+# 2. 고급스러운 Custom CSS 및 Gmarket Sans 폰트 설정 (가독성 개선 & 아이콘 겹침 방지)
 st.markdown("""
 <style>
-    /* Gmarket Sans 웹폰트 가져오기 */
-    @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansLight.woff');
+    /* Gmarket Sans 웹폰트 정의 */
     @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff');
     @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansBold.woff');
 
-    @font-face {
-        font-family: 'GmarketSans';
-        src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansLight.woff2') format('woff2');
-        font-weight: 300;
-        font-style: normal;
-    }
     @font-face {
         font-family: 'GmarketSans';
         src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff2') format('woff2');
@@ -38,10 +31,16 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* 전역 기본 본문 폰트 설정: GmarketSans (Light, weight 300) */
-    html, body, [class*="css"], .stMarkdown, .stText, div, p, span {
+    /* 전역 기본 본문 폰트: GmarketSans Medium (500)으로 선명하게 통일 */
+    html, body, p, span, label, input, button, select, div[role="radiogroup"] {
         font-family: 'GmarketSans', -apple-system, sans-serif !important;
-        font-weight: 300 !important;
+        font-weight: 500 !important;
+        color: #1e293b;
+    }
+
+    /* Streamlit 내부 아이콘 깨짐 및 텍스트 겹침 방지 (arrow_right 버그 해결) */
+    i, .material-icons, [class*="st-emotion-cache"], [data-testid="stExpanderToggleIcon"] {
+        font-family: inherit;
     }
 
     /* 메인 배경 */
@@ -49,94 +48,103 @@ st.markdown("""
         background-color: #f8fafc;
     }
     
-    /* 제목 (Dashboard Title) - Bold (weight 700) */
-    .dashboard-header, h1, h2 {
+    /* 대시보드 대제목 및 주요 섹션 제목 - Bold (700) */
+    .dashboard-header, h1, h2, .section-bold-title {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 700 !important;
         color: #0f172a;
         letter-spacing: -0.5px;
     }
     .dashboard-header {
-        font-size: 2.1rem;
-        margin-bottom: 4px;
+        font-size: 2.2rem;
+        margin-bottom: 6px;
     }
 
-    /* 서브제목 및 세분화 항목 제목 - Medium (weight 500) */
-    .dashboard-subtitle, h3, h4, h5, .metric-title, .stSidebar h3, [data-testid="stExpander"] summary span {
+    /* 세분화 항목 및 서브 타이틀 - Medium (500) */
+    .dashboard-subtitle, h3, h4, h5, .stSidebar h3, [data-testid="stExpander"] summary span {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 500 !important;
     }
     .dashboard-subtitle {
         color: #64748b;
-        font-size: 0.95rem;
-        margin-bottom: 20px;
+        font-size: 1.0rem;
+        margin-bottom: 22px;
     }
 
-    /* KPI Metric Cards */
+    /* 탭 메뉴(점유율, 지역별, 업종별) 폰트 크기 및 미디움 지정 */
+    button[data-baseweb="tab"] div {
+        font-family: 'GmarketSans', sans-serif !important;
+        font-weight: 500 !important;
+        font-size: 1.05rem !important;
+    }
+
+    /* KPI Metric Cards - 시인성 강화 */
     .metric-card {
         background-color: #ffffff;
-        border-radius: 12px;
-        padding: 20px 16px;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+        border-radius: 14px;
+        padding: 22px 18px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         border: 1px solid #e2e8f0;
         text-align: left;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
     .metric-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
     }
+    /* 소제목 글씨 크게 & 미디움 지정 */
     .metric-title {
-        font-size: 0.85rem;
-        color: #64748b;
-        margin-bottom: 8px;
+        font-family: 'GmarketSans', sans-serif !important;
+        font-size: 1.0rem !important;
+        font-weight: 500 !important;
+        color: #475569;
+        margin-bottom: 10px;
         display: flex;
         align-items: center;
         gap: 6px;
     }
-    /* 카드 내 수치 강조 - Bold */
+    /* 카드 내 수치 볼드 및 명확화 */
     .metric-value {
         font-family: 'GmarketSans', sans-serif !important;
-        font-size: 1.75rem;
+        font-size: 1.85rem;
         font-weight: 700 !important;
         color: #0f172a;
         letter-spacing: -0.5px;
     }
     .metric-unit {
-        font-size: 0.9rem;
-        font-weight: 300 !important;
+        font-size: 1.0rem;
+        font-weight: 500 !important;
         color: #64748b;
         margin-left: 2px;
     }
 
-    /* Expander (업로드 창) 커스텀 */
+    /* Expander (업로드 창) 깔끔한 스타일 */
     .streamlit-expanderHeader {
         background-color: #ffffff !important;
-        border-radius: 8px !important;
+        border-radius: 10px !important;
         border: 1px solid #e2e8f0 !important;
-        color: #1e293b !important;
+        padding: 12px 16px !important;
     }
-    
-    /* 구분선 및 여백 정돈 */
+
     hr {
         border-top: 1px solid #e2e8f0;
-        margin: 20px 0;
+        margin: 22px 0;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# 3. 은행별 고정 색상 맵 정의 (막대차트와 파이차트의 색상을 동일하게 맞춤)
+# 3. 고급 파스텔톤 브랜드 색상 맵 (Soft Pastel Color Palette)
 BANK_COLOR_MAP = {
-    '카카오뱅크': '#FEE500',
-    '하나은행': '#008485',
-    '신한은행': '#0046FF',
-    '케이뱅크': '#003366',
-    '국민은행': '#FFBC00',
-    '농축협': '#009944',
-    '토스뱅크': '#3182F6',
-    '우리은행': '#0066B3',
-    'NH농협은행': '#028E46',
-    '기업은행': '#0055A5'
+    '카카오뱅크': '#FFEAA7',  # 소프트 파스텔 옐로우
+    '하나은행': '#81ECEC',    # 민트 파스텔
+    '신한은행': '#74B9FF',    # 소프트 스카이블루
+    '케이뱅크': '#A29BFE',    # 소프트 라일락/퍼플
+    '국민은행': '#FAB1A0',    # 웜 살구 파스텔
+    '농축협': '#55E6C1',      # 소프트 에메랄드
+    '토스뱅크': '#70A1FF',    # 파스텔 블루
+    '우리은행': '#81D4FA',    # 라이트 파스텔 블루
+    'NH농협은행': '#A8E6CF',  # 소프트 연두
+    '기업은행': '#D6A2E8'     # 피치 퍼플
 }
 
 # 4. 데이터 로딩 함수
@@ -145,7 +153,6 @@ def load_default_data():
     df = pd.read_parquet('merged_data.parquet')
     return df
 
-# 기본 데이터 로드
 df = load_default_data()
 
 # 5. 헤더 영역
@@ -156,7 +163,7 @@ st.markdown('<div class="dashboard-subtitle">실시간 검색, 금액별/일자�
 # 6. 엑셀 파일 업로드 창 (버튼/토글 클릭 시 확장되는 영역)
 # ---------------------------------------------------------
 with st.expander("📂 신규 데이터 갱신 (엑셀/CSV 파일 업로드)", expanded=False):
-    st.markdown("##### 💡 새로운 데이터가 있는 경우 파일 2개를 업로드하여 대시보드를 갱신할 수 있습니다.")
+    st.markdown("<p style='font-size:0.95rem; color:#475569;'>💡 새로운 데이터가 있는 경우 파일 2개를 업로드하여 대시보드를 갱신할 수 있습니다.</p>", unsafe_allow_html=True)
     
     col_up1, col_up2 = st.columns(2)
     
@@ -186,10 +193,8 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.sidebar.markdown("### 🔍 검색 & 필터링")
 st.sidebar.markdown("---")
 
-# 7-1. 판매점 ID 검색
 search_store_id = st.sidebar.text_input("🎯 판매점 ID 검색", value="", placeholder="판매점 ID 입력...")
 
-# 7-2. 일자 범위 선택
 min_date = df['입금일자'].min()
 max_date = df['입금일자'].max()
 
@@ -200,7 +205,6 @@ date_range = st.sidebar.date_input(
     max_value=max_date
 )
 
-# 7-3. 입금금액 구분 필터
 deposit_type = st.sidebar.multiselect(
     "💵 입금금액 구분",
     options=['소비자 입금(000단위)', '개인 입출금(기타)'],
@@ -210,7 +214,6 @@ deposit_type = st.sidebar.multiselect(
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 세부 항목 필터")
 
-# 7-4. 은행, 지역, 업종 필터
 selected_banks = st.sidebar.multiselect("🏛️ 입금은행", options=sorted(df['입금은행'].dropna().unique()))
 selected_sido = st.sidebar.multiselect("🗺️ 지역(시/도)", options=sorted(df['시도'].dropna().astype(str).unique()))
 selected_category = st.sidebar.multiselect("🏢 업종구분", options=sorted(df['업종구분'].dropna().astype(str).unique()))
@@ -236,7 +239,7 @@ if selected_category:
     filtered_df = filtered_df[filtered_df['업종구분'].isin(selected_category)]
 
 # ---------------------------------------------------------
-# 8. 상단 주요 지표 (KPI) 카드 영역
+# 8. 상단 주요 지표 (KPI) 카드 영역 (글자 크기 & 미디움/볼드 조정)
 # ---------------------------------------------------------
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
@@ -282,10 +285,12 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ---------------------------------------------------------
 # 9. 시각화 차트 섹션 (Plotly 인터랙티브 차트)
 # ---------------------------------------------------------
-st.markdown("### 📊 거래 현황 다차원 시각화")
+# 거래 현황 다차원 시각화 타이틀 - Bold(700) 처리
+st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
+
 tab1, tab2, tab3 = st.tabs(["🏛️ 입금은행 점유율", "🗺️ 지역별 거래 현황", "🏢 업종별 분포"])
 
-# Plotly 차트 전용 Gmarket Sans 테마 함수
+# Plotly 차트 공통 테마 함수 (Gmarket Sans 지정)
 def apply_chart_theme(fig):
     fig.update_layout(
         plot_bgcolor="white",
@@ -306,7 +311,7 @@ with tab1:
     top10_bank_df = bank_df.head(10).copy()
     top8_bank_df = bank_df.head(8).copy()
 
-    # 1. 왼쪽: TOP 10 입금은행 (막대 차트)
+    # 1. 막대 차트 (파스텔톤 적용)
     with col_c1:
         fig_bank_bar = px.bar(
             top10_bank_df, 
@@ -319,7 +324,6 @@ with tab1:
             text='거래건수'
         )
         
-        # 천단위 구분기호 적용
         fig_bank_bar.update_traces(
             texttemplate='%{text:,.0f}', 
             textposition='inside',
@@ -327,7 +331,6 @@ with tab1:
             textfont=dict(family="GmarketSans", size=11)
         )
         
-        # x축 '만' 단위 한글 표기 설정
         max_val = top10_bank_df['거래건수'].max() if not top10_bank_df.empty else 100000
         step = max(20000, int(max_val // 5))
         tick_vals = list(range(0, int(max_val) + step, step))
@@ -346,19 +349,18 @@ with tab1:
         fig_bank_bar = apply_chart_theme(fig_bank_bar)
         st.plotly_chart(fig_bank_bar, use_container_width=True)
         
-    # 2. 오른쪽: 주요 은행별 비중 (파이 차트)
+    # 2. 파이 차트 (동일 파스텔톤)
     with col_c2:
         fig_bank_pie = px.pie(
             top8_bank_df, 
             names='입금은행', 
             values='거래건수',
             title="<b>주요 은행별 비중</b>", 
-            hole=0.45,
+            hole=0.48,
             color='입금은행',
             color_discrete_map=BANK_COLOR_MAP
         )
         
-        # 퍼센트 소수점 한 자리(.0%) 포맷팅 및 폰트 적용
         fig_bank_pie.update_traces(
             textinfo='percent',
             hoverinfo='label+value+percent',
@@ -371,15 +373,18 @@ with tab1:
         fig_bank_pie = apply_chart_theme(fig_bank_pie)
         st.plotly_chart(fig_bank_pie, use_container_width=True)
 
-# Tab 2: 지역별 거래 현황
+# Tab 2: 지역별 거래 현황 (예쁜 파스텔 블루-핑크 스케일)
 with tab2:
     sido_df = filtered_df['시도'].value_counts().reset_index()
     sido_df.columns = ['지역(시/도)', '거래건수']
     
+    # 세련된 파스텔톤 컬러 스케일 적용
+    pastel_blue_pink = ['#D6E4FF', '#ADC6FF', '#85A5FF', '#9254DE', '#F759AB']
+    
     fig_sido = px.bar(
         sido_df, x='지역(시/도)', y='거래건수',
         title="<b>전국 시/도별 거래 분포</b>",
-        color='거래건수', color_continuous_scale='Cividis',
+        color='거래건수', color_continuous_scale=pastel_blue_pink,
         text='거래건수'
     )
     fig_sido.update_traces(texttemplate='%{text:,.0f}', textposition='outside', textfont=dict(family="GmarketSans"))
@@ -387,15 +392,17 @@ with tab2:
     fig_sido = apply_chart_theme(fig_sido)
     st.plotly_chart(fig_sido, use_container_width=True)
 
-# Tab 3: 업종별 분포
+# Tab 3: 업종별 분포 (예쁜 파스텔 민트-퍼플 스케일)
 with tab3:
     cat_df = filtered_df['업종구분'].value_counts().reset_index()
     cat_df.columns = ['업종구분', '거래건수']
     
+    pastel_mint_purple = ['#E6F7FF', '#BAE7FF', '#91D5FF', '#B37FEB', '#9254DE']
+    
     fig_cat = px.bar(
         cat_df.head(10), x='업종구분', y='거래건수',
         title="<b>TOP 10 업종 분포</b>",
-        color='거래건수', color_continuous_scale='Tealgrn',
+        color='거래건수', color_continuous_scale=pastel_mint_purple,
         text='거래건수'
     )
     fig_cat.update_traces(texttemplate='%{text:,.0f}', textposition='outside', textfont=dict(family="GmarketSans"))
@@ -408,7 +415,7 @@ st.markdown("---")
 # ---------------------------------------------------------
 # 10. 상세 거래 내역 데이터 테이블
 # ---------------------------------------------------------
-st.markdown(f"### 📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#64748b; font-weight:300;'>(조회 결과: {len(filtered_df):,} 건)</span>", unsafe_allow_html=True)
+st.markdown(f"<h3 style='font-size:1.25rem;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#64748b; font-weight:500;'>(조회 결과: {len(filtered_df):,} 건)</span></h3>", unsafe_allow_html=True)
 
 display_cols = [
     '최종거래일시', '판매점ID', '상호', '대표자', '명의자명', 
