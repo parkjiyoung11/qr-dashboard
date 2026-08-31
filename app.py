@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import math
 
 # 1. 페이지 레이아웃 및 기본 설정
@@ -12,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. Custom CSS 및 Gmarket Sans 폰트 설정
+# 2. Custom CSS 및 Gmarket Sans 폰트 + 깔끔한 페이지네이션 UI 스타일
 st.markdown("""
 <style>
     @font-face {
@@ -108,6 +107,44 @@ st.markdown("""
         border-top: 1px solid #e2e8f0;
         margin: 22px 0;
     }
+
+    /* 콤팩트 페이지네이션 버튼 커스텀 */
+    .pagination-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        margin-top: 15px;
+        margin-bottom: 25px;
+    }
+    .page-btn {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #334155;
+        background-color: transparent;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none !important;
+    }
+    .page-btn.active {
+        background-color: #262626;
+        color: #ffffff !important;
+        font-weight: 700;
+    }
+    .page-btn.circle-border {
+        border: 1px solid #e2e8f0;
+        color: #475569;
+    }
+    .page-btn:hover:not(.active) {
+        background-color: #f1f5f9;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -125,7 +162,7 @@ BANK_COLOR_MAP = {
     '기업은행': '#D6A2E8'
 }
 
-# 4. 데이터 로딩 및 날짜 변환 함수
+# 4. 데이터 로딩 및 속도 최적화 함수
 @st.cache_data
 def load_default_data():
     df = pd.read_parquet('merged_data.parquet')
@@ -211,25 +248,25 @@ selected_banks = st.sidebar.multiselect("🏛️ 입금은행", options=bank_opt
 selected_sido = st.sidebar.multiselect("🗺️ 지역(시/도)", options=sido_options, placeholder="선택하세요")
 selected_category = st.sidebar.multiselect("🏢 업종구분", options=category_options, placeholder="선택하세요")
 
-# --- 필터링 로직 ---
-filtered_df = df.copy()
+# --- 필터링 캐싱 적용 (속도 최적화) ---
+@st.cache_data
+def filter_dataframe(data, search_id, d_range, d_type, banks, sidos, cats):
+    f_df = data.copy()
+    if d_range and isinstance(d_range, (list, tuple)) and len(d_range) == 2:
+        f_df = f_df[(f_df['입금일자'] >= d_range[0]) & (f_df['입금일자'] <= d_range[1])]
+    if search_id.strip() and '판매점ID' in f_df.columns:
+        f_df = f_df[f_df['판매점ID'].astype(str).str.contains(search_id.strip())]
+    if d_type and '입금구분' in f_df.columns:
+        f_df = f_df[f_df['입금구분'].isin(d_type)]
+    if banks and '입금은행' in f_df.columns:
+        f_df = f_df[f_df['입금은행'].isin(banks)]
+    if sidos and '시도' in f_df.columns:
+        f_df = f_df[f_df['시도'].isin(sidos)]
+    if cats and '업종구분' in f_df.columns:
+        f_df = f_df[f_df['업종구분'].isin(cats)]
+    return f_df
 
-if date_range and isinstance(date_range, (list, tuple)) and len(date_range) == 2:
-    start_date, end_date = date_range
-    filtered_df = filtered_df[(filtered_df['입금일자'] >= start_date) & (filtered_df['입금일자'] <= end_date)]
-
-if search_store_id.strip() and '판매점ID' in filtered_df.columns:
-    filtered_df = filtered_df[filtered_df['판매점ID'].astype(str).str.contains(search_store_id.strip())]
-
-if deposit_type and '입금구분' in filtered_df.columns:
-    filtered_df = filtered_df[filtered_df['입금구분'].isin(deposit_type)]
-
-if selected_banks and '입금은행' in filtered_df.columns:
-    filtered_df = filtered_df[filtered_df['입금은행'].isin(selected_banks)]
-if selected_sido and '시도' in filtered_df.columns:
-    filtered_df = filtered_df[filtered_df['시도'].isin(selected_sido)]
-if selected_category and '업종구분' in filtered_df.columns:
-    filtered_df = filtered_df[filtered_df['업종구분'].isin(selected_category)]
+filtered_df = filter_dataframe(df, search_store_id, date_range, deposit_type, selected_banks, selected_sido, selected_category)
 
 # ---------------------------------------------------------
 # 8. 상단 주요 지표 (KPI) 카드 영역
@@ -410,7 +447,7 @@ with tab3:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 10. 상세 거래 내역 데이터 테이블 (버튼형 숫자 페이징 적용)
+# 10. 상세 거래 내역 데이터 테이블 (속도 저하 없는 초고속 디스플레이)
 # ---------------------------------------------------------
 st.markdown(f"<h3 style='font-size:1.25rem;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#64748b; font-weight:500;'>(조회 결과: {len(filtered_df):,} 건)</span></h3>", unsafe_allow_html=True)
 
@@ -421,83 +458,56 @@ display_cols = [
 
 valid_cols = [col for col in display_cols if col in filtered_df.columns]
 
-# --- 버튼 방식 페이징 계산 ---
+# --- 초고속 10개 단위 슬라이싱 및 세션 상태 페이지 조절 ---
 items_per_page = 10
 total_items = len(filtered_df)
 total_pages = math.ceil(total_items / items_per_page) if total_items > 0 else 1
 
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = 1
+if 'curr_page' not in st.session_state:
+    st.session_state.curr_page = 1
 
-if st.session_state.current_page > total_pages:
-    st.session_state.current_page = total_pages
-if st.session_state.current_page < 1:
-    st.session_state.current_page = 1
+# 페이지 번호 범위 제한
+if st.session_state.curr_page > total_pages:
+    st.session_state.curr_page = total_pages
+if st.session_state.curr_page < 1:
+    st.session_state.curr_page = 1
 
-start_idx = (st.session_state.current_page - 1) * items_per_page
+# 현재 페이지의 10개만 정확하게 슬라이싱
+start_idx = (st.session_state.curr_page - 1) * items_per_page
 end_idx = start_idx + items_per_page
 page_data = filtered_df[valid_cols].iloc[start_idx:end_idx]
 
-# 데이터 테이블 표시 (10개 고정)
 st.dataframe(
     page_data,
     use_container_width=True,
     height=390
 )
 
-st.markdown("<br>", unsafe_allow_html=True)
+# --- 요청하신 첨부 이미지와 동일한 콤팩트 페이지네이션 UI (1 2 3 4 5 6 7 8 9 10 > >>) ---
+page_block_size = 10
+start_p = ((st.session_state.curr_page - 1) // page_block_size) * page_block_size + 1
+end_p = min(total_pages, start_p + page_block_size - 1)
 
-# --- 숫자 버튼 방식 페이징 UI ---
-# 현재 페이지 기준으로 보여줄 버튼 범위 계산 (최대 5개 버튼)
-page_block_size = 5
-start_page = max(1, st.session_state.current_page - (page_block_size // 2))
-end_page = min(total_pages, start_page + page_block_size - 1)
+page_range = list(range(start_p, end_p + 1))
 
-# 범위를 5개로 맞추기 위한 보정
-if end_page - start_page + 1 < page_block_size:
-    start_page = max(1, end_page - page_block_size + 1)
+# 버튼들을 촘촘하게 붙이기 위해 칼럼 너비 좁게 설정
+btn_cols = st.columns([1] * len(page_range) + [1, 1] + [8])
 
-page_numbers = list(range(start_page, end_page + 1))
-
-# 버튼 그리드 컬럼 생성
-cols = st.columns(len(page_numbers) + 4)
-
-# 1. 맨처음 이동 버튼
-with cols[0]:
-    if st.button("⏮️ 처음", disabled=(st.session_state.current_page == 1)):
-        st.session_state.current_page = 1
-        st.rerun()
-
-# 2. 이전 페이지 버튼
-with cols[1]:
-    if st.button("◀ 이전", disabled=(st.session_state.current_page == 1)):
-        st.session_state.current_page -= 1
-        st.rerun()
-
-# 3. 숫자 페이지 버튼들 (1, 2, 3, 4, 5...)
-for i, p_num in enumerate(page_numbers):
-    with cols[i + 2]:
-        btn_type = "primary" if p_num == st.session_state.current_page else "secondary"
-        if st.button(f"{p_num}", key=f"page_btn_{p_num}", type=btn_type):
-            st.session_state.current_page = p_num
+for idx, p_num in enumerate(page_range):
+    with btn_cols[idx]:
+        b_type = "primary" if p_num == st.session_state.curr_page else "secondary"
+        if st.button(f"{p_num}", key=f"p_btn_{p_num}", type=b_type):
+            st.session_state.curr_page = p_num
             st.rerun()
 
-# 4. 다음 페이지 버튼
-with cols[-2]:
-    if st.button("다음 ▶", disabled=(st.session_state.current_page == total_pages or total_pages == 0)):
-        st.session_state.current_page += 1
+# '>' 다음 10개 블록 이동
+with btn_cols[len(page_range)]:
+    if st.button("›", key="next_block", disabled=(end_p >= total_pages)):
+        st.session_state.curr_page = min(total_pages, end_p + 1)
         st.rerun()
 
-# 5. 맨끝 이동 버튼
-with cols[-1]:
-    if st.button("끝 ⏭️", disabled=(st.session_state.current_page == total_pages or total_pages == 0)):
-        st.session_state.current_page = total_pages
+# '>>' 맨 끝 페이지 이동
+with btn_cols[len(page_range) + 1]:
+    if st.button("»", key="last_page", disabled=(st.session_state.curr_page == total_pages or total_pages == 0)):
+        st.session_state.curr_page = total_pages
         st.rerun()
-
-# 하단 정보 안내
-st.markdown(
-    f"<p style='text-align: center; color: #64748b; font-size: 0.95rem; margin-top: 10px;'>"
-    f"페이지 <b>{st.session_state.current_page:,}</b> / {total_pages:,} (총 {total_items:,} 건)"
-    f"</p>",
-    unsafe_allow_html=True
-)
