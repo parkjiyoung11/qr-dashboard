@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. 안전한 Custom CSS 및 Gmarket Sans 폰트 설정 (폰트 웹로드 안정화 및 아이콘 버그 완벽 수정)
+# 2. 안전한 Custom CSS 및 Gmarket Sans 폰트 설정
 st.markdown("""
 <style>
     /* Gmarket Sans 폰트 안전 로드 */
@@ -35,17 +35,15 @@ st.markdown("""
         color: #1e293b;
     }
 
-    /* Streamlit 아이콘 및 확장 버튼 텍스트 겹침 완벽 방지 */
+    /* Streamlit 아이콘 및 확장 버튼 텍스트 겹침 방지 */
     [class*="st-"] i, [class*="st-"] svg, .material-icons {
         font-family: inherit !important;
     }
 
-    /* 메인 배경 */
     .main {
         background-color: #f8fafc;
     }
     
-    /* 대시보드 타이틀 - Bold (700) */
     .dashboard-header, h1, h2, .section-bold-title {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 700 !important;
@@ -57,7 +55,6 @@ st.markdown("""
         margin-bottom: 6px;
     }
 
-    /* 서브 타이틀 및 레이블 - Medium (500) */
     .dashboard-subtitle, h3, h4, h5, .stSidebar h3 {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 500 !important;
@@ -68,14 +65,12 @@ st.markdown("""
         margin-bottom: 22px;
     }
 
-    /* 탭 메뉴 폰트 크기 및 굵기 설정 */
     button[data-baseweb="tab"] div {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 500 !important;
         font-size: 1.05rem !important;
     }
 
-    /* KPI Metric Cards - 가독성 우수 */
     .metric-card {
         background-color: #ffffff;
         border-radius: 14px;
@@ -105,7 +100,6 @@ st.markdown("""
         margin-left: 2px;
     }
 
-    /* 파일 업로드 Expander 헤더 정돈 */
     .streamlit-expanderHeader {
         background-color: #ffffff !important;
         border-radius: 10px !important;
@@ -121,28 +115,30 @@ st.markdown("""
 
 # 3. 감성 파스텔톤 브랜드 색상 맵 (Soft Pastel Colors)
 BANK_COLOR_MAP = {
-    '카카오뱅크': '#FFEAA7',  # 파스텔 옐로우
-    '하나은행': '#81ECEC',    # 민트 파스텔
-    '신한은행': '#74B9FF',    # 소프트 스카이블루
-    '케이뱅크': '#A29BFE',    # 소프트 라일락
-    '국민은행': '#FAB1A0',    # 살구 파스텔
-    '농축협': '#55E6C1',      # 에메랄드 파스텔
-    '토스뱅크': '#70A1FF',    # 파스텔 블루
-    '우리은행': '#81D4FA',    # 라이트 파스텔 블루
-    'NH농협은행': '#A8E6CF',  # 연두 파스텔
-    '기업은행': '#D6A2E8'     # 피치 퍼플
+    '카카오뱅크': '#FFEAA7',
+    '하나은행': '#81ECEC',
+    '신한은행': '#74B9FF',
+    '케이뱅크': '#A29BFE',
+    '국민은행': '#FAB1A0',
+    '농축협': '#55E6C1',
+    '토스뱅크': '#70A1FF',
+    '우리은행': '#81D4FA',
+    'NH농협은행': '#A8E6CF',
+    '기업은행': '#D6A2E8'
 }
 
-# 4. 데이터 로딩 함수 (Parquet 파일 로드)
+# 4. 데이터 로딩 및 날짜 변환 함수
 @st.cache_data
 def load_default_data():
     df = pd.read_parquet('merged_data.parquet')
+    if '입금일자' in df.columns:
+        df['입금일자'] = pd.to_datetime(df['입금일자']).dt.date
     return df
 
 try:
     df = load_default_data()
 except Exception as e:
-    st.error(f"데이터 파일('merged_data.parquet')을 불러오는데 실패했습니다: {e}")
+    st.error(f"데이터 파일('merged_data.parquet')을 읽어오는 중 오류가 발생했습니다: {e}")
     st.stop()
 
 # 5. 헤더 영역
@@ -185,47 +181,55 @@ st.sidebar.markdown("---")
 
 search_store_id = st.sidebar.text_input("🎯 판매점 ID 검색", value="", placeholder="판매점 ID 입력...")
 
-min_date = df['입금일자'].min()
-max_date = df['입금일자'].max()
+min_date = df['입금일자'].min() if '입금일자' in df.columns else None
+max_date = df['입금일자'].max() if '입금일자' in df.columns else None
 
-date_range = st.sidebar.date_input(
-    "📅 입금일자 범위",
-    value=(min_date, max_date),
-    min_value=min_date,
-    max_value=max_date
-)
+if min_date and max_date:
+    date_range = st.sidebar.date_input(
+        "📅 입금일자 범위",
+        value=(min_date, max_date),
+        min_value=min_date,
+        max_value=max_date
+    )
+else:
+    date_range = None
 
+deposit_options = sorted(df['입금구분'].dropna().unique()) if '입금구분' in df.columns else []
 deposit_type = st.sidebar.multiselect(
     "💵 입금금액 구분",
-    options=['소비자 입금(000단위)', '개인 입출금(기타)'],
-    default=['소비자 입금(000단위)', '개인 입출금(기타)']
+    options=deposit_options,
+    default=deposit_options
 )
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 세부 항목 필터")
 
-selected_banks = st.sidebar.multiselect("🏛️ 입금은행", options=sorted(df['입금은행'].dropna().unique()))
-selected_sido = st.sidebar.multiselect("🗺️ 지역(시/도)", options=sorted(df['시도'].dropna().astype(str).unique()))
-selected_category = st.sidebar.multiselect("🏢 업종구분", options=sorted(df['업종구분'].dropna().astype(str).unique()))
+bank_options = sorted(df['입금은행'].dropna().unique()) if '입금은행' in df.columns else []
+sido_options = sorted(df['시도'].dropna().astype(str).unique()) if '시도' in df.columns else []
+category_options = sorted(df['업종구분'].dropna().astype(str).unique()) if '업종구분' in df.columns else []
+
+selected_banks = st.sidebar.multiselect("🏛️ 입금은행", options=bank_options)
+selected_sido = st.sidebar.multiselect("🗺️ 지역(시/도)", options=sido_options)
+selected_category = st.sidebar.multiselect("🏢 업종구분", options=category_options)
 
 # --- 필터링 로직 ---
 filtered_df = df.copy()
 
-if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
+if date_range and isinstance(date_range, (list, tuple)) and len(date_range) == 2:
     start_date, end_date = date_range
     filtered_df = filtered_df[(filtered_df['입금일자'] >= start_date) & (filtered_df['입금일자'] <= end_date)]
 
-if search_store_id.strip():
+if search_store_id.strip() and '판매점ID' in filtered_df.columns:
     filtered_df = filtered_df[filtered_df['판매점ID'].astype(str).str.contains(search_store_id.strip())]
 
-if deposit_type:
+if deposit_type and '입금구분' in filtered_df.columns:
     filtered_df = filtered_df[filtered_df['입금구분'].isin(deposit_type)]
 
-if selected_banks:
+if selected_banks and '입금은행' in filtered_df.columns:
     filtered_df = filtered_df[filtered_df['입금은행'].isin(selected_banks)]
-if selected_sido:
+if selected_sido and '시도' in filtered_df.columns:
     filtered_df = filtered_df[filtered_df['시도'].isin(selected_sido)]
-if selected_category:
+if selected_category and '업종구분' in filtered_df.columns:
     filtered_df = filtered_df[filtered_df['업종구분'].isin(selected_category)]
 
 # ---------------------------------------------------------
@@ -234,9 +238,9 @@ if selected_category:
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
 total_tx = len(filtered_df)
-total_amount = filtered_df['입금금액'].sum()
-avg_amount = int(filtered_df['입금금액'].mean()) if total_tx > 0 else 0
-unique_stores = filtered_df['판매점ID'].nunique()
+total_amount = int(filtered_df['입금금액'].sum()) if '입금금액' in filtered_df.columns else 0
+avg_amount = int(filtered_df['입금금액'].mean()) if total_tx > 0 and '입금금액' in filtered_df.columns else 0
+unique_stores = filtered_df['판매점ID'].nunique() if '판매점ID' in filtered_df.columns else 0
 
 with kpi1:
     st.markdown(f'''
@@ -279,7 +283,6 @@ st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bo
 
 tab1, tab2, tab3 = st.tabs(["🏛️ 입금은행 점유율", "🗺️ 지역별 거래 현황", "🏢 업종별 분포"])
 
-# Plotly 차트 공통 테마 함수
 def apply_chart_theme(fig):
     fig.update_layout(
         plot_bgcolor="white",
@@ -294,109 +297,116 @@ def apply_chart_theme(fig):
 with tab1:
     col_c1, col_c2 = st.columns([1, 1])
     
-    bank_df = filtered_df['입금은행'].value_counts().reset_index()
-    bank_df.columns = ['입금은행', '거래건수']
-    
-    top10_bank_df = bank_df.head(10).copy()
-    top8_bank_df = bank_df.head(8).copy()
+    if '입금은행' in filtered_df.columns and not filtered_df.empty:
+        bank_df = filtered_df['입금은행'].value_counts().reset_index()
+        bank_df.columns = ['입금은행', '거래건수']
+        
+        top10_bank_df = bank_df.head(10).copy()
+        top8_bank_df = bank_df.head(8).copy()
 
-    # 1. 막대 차트 (파스텔톤 적용)
-    with col_c1:
-        fig_bank_bar = px.bar(
-            top10_bank_df, 
-            x='거래건수', 
-            y='입금은행', 
-            orientation='h',
-            title="<b>TOP 10 입금은행 (거래건수)</b>",
-            color='입금은행',
-            color_discrete_map=BANK_COLOR_MAP,
-            text='거래건수'
-        )
-        
-        fig_bank_bar.update_traces(
-            texttemplate='%{text:,.0f}', 
-            textposition='inside',
-            insidetextanchor='middle',
-            textfont=dict(family="GmarketSans", size=11)
-        )
-        
-        max_val = top10_bank_df['거래건수'].max() if not top10_bank_df.empty else 100000
-        step = max(20000, int(max_val // 5)) if max_val > 0 else 20000
-        tick_vals = list(range(0, int(max_val) + step, step))
-        tick_texts = [f"{v//10000}만" if v >= 10000 else (f"{v:,}" if v > 0 else "0") for v in tick_vals]
-        
-        fig_bank_bar.update_layout(
-            yaxis={'categoryorder': 'total ascending'}, 
-            xaxis=dict(
-                tickmode='array',
-                tickvals=tick_vals,
-                ticktext=tick_texts
-            ),
-            showlegend=False, 
-            height=400
-        )
-        fig_bank_bar = apply_chart_theme(fig_bank_bar)
-        st.plotly_chart(fig_bank_bar, use_container_width=True)
-        
-    # 2. 파이 차트 (동일 파스텔톤)
-    with col_c2:
-        fig_bank_pie = px.pie(
-            top8_bank_df, 
-            names='입금은행', 
-            values='거래건수',
-            title="<b>주요 은행별 비중</b>", 
-            hole=0.48,
-            color='입금은행',
-            color_discrete_map=BANK_COLOR_MAP
-        )
-        
-        fig_bank_pie.update_traces(
-            textinfo='percent',
-            hoverinfo='label+value+percent',
-            hovertemplate="<b>%{label}</b><br>거래건수: %{value:,.0f}건<br>비중: %{percent:.1%}",
-            texttemplate='%{percent:.1%}',
-            textfont=dict(family="GmarketSans", size=12)
-        )
-        
-        fig_bank_pie.update_layout(height=400)
-        fig_bank_pie = apply_chart_theme(fig_bank_pie)
-        st.plotly_chart(fig_bank_pie, use_container_width=True)
+        with col_c1:
+            fig_bank_bar = px.bar(
+                top10_bank_df, 
+                x='거래건수', 
+                y='입금은행', 
+                orientation='h',
+                title="<b>TOP 10 입금은행 (거래건수)</b>",
+                color='입금은행',
+                color_discrete_map=BANK_COLOR_MAP,
+                text='거래건수'
+            )
+            
+            fig_bank_bar.update_traces(
+                texttemplate='%{text:,.0f}', 
+                textposition='inside',
+                insidetextanchor='middle',
+                textfont=dict(family="GmarketSans", size=11)
+            )
+            
+            max_val = top10_bank_df['거래건수'].max() if not top10_bank_df.empty else 100000
+            step = max(20000, int(max_val // 5)) if max_val > 0 else 20000
+            tick_vals = list(range(0, int(max_val) + step, step))
+            tick_texts = [f"{v//10000}만" if v >= 10000 else (f"{v:,}" if v > 0 else "0") for v in tick_vals]
+            
+            fig_bank_bar.update_layout(
+                yaxis={'categoryorder': 'total ascending'}, 
+                xaxis=dict(
+                    tickmode='array',
+                    tickvals=tick_vals,
+                    ticktext=tick_texts
+                ),
+                showlegend=False, 
+                height=400
+            )
+            fig_bank_bar = apply_chart_theme(fig_bank_bar)
+            st.plotly_chart(fig_bank_bar, use_container_width=True)
+            
+        with col_c2:
+            fig_bank_pie = px.pie(
+                top8_bank_df, 
+                names='입금은행', 
+                values='거래건수',
+                title="<b>주요 은행별 비중</b>", 
+                hole=0.48,
+                color='입금은행',
+                color_discrete_map=BANK_COLOR_MAP
+            )
+            
+            fig_bank_pie.update_traces(
+                textinfo='percent',
+                hoverinfo='label+value+percent',
+                hovertemplate="<b>%{label}</b><br>거래건수: %{value:,.0f}건<br>비중: %{percent:.1%}",
+                texttemplate='%{percent:.1%}',
+                textfont=dict(family="GmarketSans", size=12)
+            )
+            
+            fig_bank_pie.update_layout(height=400)
+            fig_bank_pie = apply_chart_theme(fig_bank_pie)
+            st.plotly_chart(fig_bank_pie, use_container_width=True)
+    else:
+        st.info("조회된 입금은행 데이터가 없습니다.")
 
 # Tab 2: 지역별 거래 현황
 with tab2:
-    sido_df = filtered_df['시도'].value_counts().reset_index()
-    sido_df.columns = ['지역(시/도)', '거래건수']
-    
-    pastel_blue_pink = ['#D6E4FF', '#ADC6FF', '#85A5FF', '#9254DE', '#F759AB']
-    
-    fig_sido = px.bar(
-        sido_df, x='지역(시/도)', y='거래건수',
-        title="<b>전국 시/도별 거래 분포</b>",
-        color='거래건수', color_continuous_scale=pastel_blue_pink,
-        text='거래건수'
-    )
-    fig_sido.update_traces(texttemplate='%{text:,.0f}', textposition='outside', textfont=dict(family="GmarketSans"))
-    fig_sido.update_layout(height=400)
-    fig_sido = apply_chart_theme(fig_sido)
-    st.plotly_chart(fig_sido, use_container_width=True)
+    if '시도' in filtered_df.columns and not filtered_df.empty:
+        sido_df = filtered_df['시도'].value_counts().reset_index()
+        sido_df.columns = ['지역(시/도)', '거래건수']
+        
+        pastel_blue_pink = ['#D6E4FF', '#ADC6FF', '#85A5FF', '#9254DE', '#F759AB']
+        
+        fig_sido = px.bar(
+            sido_df, x='지역(시/도)', y='거래건수',
+            title="<b>전국 시/도별 거래 분포</b>",
+            color='거래건수', color_continuous_scale=pastel_blue_pink,
+            text='거래건수'
+        )
+        fig_sido.update_traces(texttemplate='%{text:,.0f}', textposition='outside', textfont=dict(family="GmarketSans"))
+        fig_sido.update_layout(height=400)
+        fig_sido = apply_chart_theme(fig_sido)
+        st.plotly_chart(fig_sido, use_container_width=True)
+    else:
+        st.info("조회된 지역 데이터가 없습니다.")
 
 # Tab 3: 업종별 분포
 with tab3:
-    cat_df = filtered_df['업종구분'].value_counts().reset_index()
-    cat_df.columns = ['업종구분', '거래건수']
-    
-    pastel_mint_purple = ['#E6F7FF', '#BAE7FF', '#91D5FF', '#B37FEB', '#9254DE']
-    
-    fig_cat = px.bar(
-        cat_df.head(10), x='업종구분', y='거래건수',
-        title="<b>TOP 10 업종 분포</b>",
-        color='거래건수', color_continuous_scale=pastel_mint_purple,
-        text='거래건수'
-    )
-    fig_cat.update_traces(texttemplate='%{text:,.0f}', textposition='outside', textfont=dict(family="GmarketSans"))
-    fig_cat.update_layout(height=400)
-    fig_cat = apply_chart_theme(fig_cat)
-    st.plotly_chart(fig_cat, use_container_width=True)
+    if '업종구분' in filtered_df.columns and not filtered_df.empty:
+        cat_df = filtered_df['업종구분'].value_counts().reset_index()
+        cat_df.columns = ['업종구분', '거래건수']
+        
+        pastel_mint_purple = ['#E6F7FF', '#BAE7FF', '#91D5FF', '#B37FEB', '#9254DE']
+        
+        fig_cat = px.bar(
+            cat_df.head(10), x='업종구분', y='거래건수',
+            title="<b>TOP 10 업종 분포</b>",
+            color='거래건수', color_continuous_scale=pastel_mint_purple,
+            text='거래건수'
+        )
+        fig_cat.update_traces(texttemplate='%{text:,.0f}', textposition='outside', textfont=dict(family="GmarketSans"))
+        fig_cat.update_layout(height=400)
+        fig_cat = apply_chart_theme(fig_cat)
+        st.plotly_chart(fig_cat, use_container_width=True)
+    else:
+        st.info("조회된 업종 데이터가 없습니다.")
 
 st.markdown("---")
 
@@ -410,7 +420,6 @@ display_cols = [
     '시도', '도로명주소', '업종구분', '입금은행', '입금자', '입금금액', '입금구분'
 ]
 
-# 존재하는 컬럼만 필터링하여 안전하게 표출
 valid_cols = [col for col in display_cols if col in filtered_df.columns]
 
 st.dataframe(
