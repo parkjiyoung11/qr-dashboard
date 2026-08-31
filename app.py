@@ -11,13 +11,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. 고급스러운 Custom CSS 및 Gmarket Sans 폰트 설정 (가독성 개선 & 아이콘 겹침 방지)
+# 2. 안전한 Custom CSS 및 Gmarket Sans 폰트 설정 (폰트 웹로드 안정화 및 아이콘 버그 완벽 수정)
 st.markdown("""
 <style>
-    /* Gmarket Sans 웹폰트 정의 */
-    @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff');
-    @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansBold.woff');
-
+    /* Gmarket Sans 폰트 안전 로드 */
     @font-face {
         font-family: 'GmarketSans';
         src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff2') format('woff2');
@@ -31,16 +28,16 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* 전역 기본 본문 폰트: GmarketSans Medium (500)으로 선명하게 통일 */
-    html, body, p, span, label, input, button, select, div[role="radiogroup"] {
+    /* 전역 폰트 지정: Medium(500)으로 선명함 확보 */
+    html, body, p, span, label, input, button, select {
         font-family: 'GmarketSans', -apple-system, sans-serif !important;
         font-weight: 500 !important;
         color: #1e293b;
     }
 
-    /* Streamlit 내부 아이콘 깨짐 및 텍스트 겹침 방지 (arrow_right 버그 해결) */
-    i, .material-icons, [class*="st-emotion-cache"], [data-testid="stExpanderToggleIcon"] {
-        font-family: inherit;
+    /* Streamlit 아이콘 및 확장 버튼 텍스트 겹침 완벽 방지 */
+    [class*="st-"] i, [class*="st-"] svg, .material-icons {
+        font-family: inherit !important;
     }
 
     /* 메인 배경 */
@@ -48,7 +45,7 @@ st.markdown("""
         background-color: #f8fafc;
     }
     
-    /* 대시보드 대제목 및 주요 섹션 제목 - Bold (700) */
+    /* 대시보드 타이틀 - Bold (700) */
     .dashboard-header, h1, h2, .section-bold-title {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 700 !important;
@@ -60,8 +57,8 @@ st.markdown("""
         margin-bottom: 6px;
     }
 
-    /* 세분화 항목 및 서브 타이틀 - Medium (500) */
-    .dashboard-subtitle, h3, h4, h5, .stSidebar h3, [data-testid="stExpander"] summary span {
+    /* 서브 타이틀 및 레이블 - Medium (500) */
+    .dashboard-subtitle, h3, h4, h5, .stSidebar h3 {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 500 !important;
     }
@@ -71,14 +68,14 @@ st.markdown("""
         margin-bottom: 22px;
     }
 
-    /* 탭 메뉴(점유율, 지역별, 업종별) 폰트 크기 및 미디움 지정 */
+    /* 탭 메뉴 폰트 크기 및 굵기 설정 */
     button[data-baseweb="tab"] div {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 500 !important;
         font-size: 1.05rem !important;
     }
 
-    /* KPI Metric Cards - 시인성 강화 */
+    /* KPI Metric Cards - 가독성 우수 */
     .metric-card {
         background-color: #ffffff;
         border-radius: 14px;
@@ -86,24 +83,14 @@ st.markdown("""
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         border: 1px solid #e2e8f0;
         text-align: left;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    .metric-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
-    }
-    /* 소제목 글씨 크게 & 미디움 지정 */
     .metric-title {
         font-family: 'GmarketSans', sans-serif !important;
         font-size: 1.0rem !important;
         font-weight: 500 !important;
         color: #475569;
         margin-bottom: 10px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
     }
-    /* 카드 내 수치 볼드 및 명확화 */
     .metric-value {
         font-family: 'GmarketSans', sans-serif !important;
         font-size: 1.85rem;
@@ -118,12 +105,11 @@ st.markdown("""
         margin-left: 2px;
     }
 
-    /* Expander (업로드 창) 깔끔한 스타일 */
+    /* 파일 업로드 Expander 헤더 정돈 */
     .streamlit-expanderHeader {
         background-color: #ffffff !important;
         border-radius: 10px !important;
         border: 1px solid #e2e8f0 !important;
-        padding: 12px 16px !important;
     }
 
     hr {
@@ -133,27 +119,31 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 3. 고급 파스텔톤 브랜드 색상 맵 (Soft Pastel Color Palette)
+# 3. 감성 파스텔톤 브랜드 색상 맵 (Soft Pastel Colors)
 BANK_COLOR_MAP = {
-    '카카오뱅크': '#FFEAA7',  # 소프트 파스텔 옐로우
+    '카카오뱅크': '#FFEAA7',  # 파스텔 옐로우
     '하나은행': '#81ECEC',    # 민트 파스텔
     '신한은행': '#74B9FF',    # 소프트 스카이블루
-    '케이뱅크': '#A29BFE',    # 소프트 라일락/퍼플
-    '국민은행': '#FAB1A0',    # 웜 살구 파스텔
-    '농축협': '#55E6C1',      # 소프트 에메랄드
+    '케이뱅크': '#A29BFE',    # 소프트 라일락
+    '국민은행': '#FAB1A0',    # 살구 파스텔
+    '농축협': '#55E6C1',      # 에메랄드 파스텔
     '토스뱅크': '#70A1FF',    # 파스텔 블루
     '우리은행': '#81D4FA',    # 라이트 파스텔 블루
-    'NH농협은행': '#A8E6CF',  # 소프트 연두
+    'NH농협은행': '#A8E6CF',  # 연두 파스텔
     '기업은행': '#D6A2E8'     # 피치 퍼플
 }
 
-# 4. 데이터 로딩 함수
+# 4. 데이터 로딩 함수 (Parquet 파일 로드)
 @st.cache_data
 def load_default_data():
     df = pd.read_parquet('merged_data.parquet')
     return df
 
-df = load_default_data()
+try:
+    df = load_default_data()
+except Exception as e:
+    st.error(f"데이터 파일('merged_data.parquet')을 불러오는데 실패했습니다: {e}")
+    st.stop()
 
 # 5. 헤더 영역
 st.markdown('<div class="dashboard-header">💳 QR플레이트 사업자계좌 입금거래 대시보드</div>', unsafe_allow_html=True)
@@ -221,7 +211,7 @@ selected_category = st.sidebar.multiselect("🏢 업종구분", options=sorted(d
 # --- 필터링 로직 ---
 filtered_df = df.copy()
 
-if len(date_range) == 2:
+if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
     start_date, end_date = date_range
     filtered_df = filtered_df[(filtered_df['입금일자'] >= start_date) & (filtered_df['입금일자'] <= end_date)]
 
@@ -239,7 +229,7 @@ if selected_category:
     filtered_df = filtered_df[filtered_df['업종구분'].isin(selected_category)]
 
 # ---------------------------------------------------------
-# 8. 상단 주요 지표 (KPI) 카드 영역 (글자 크기 & 미디움/볼드 조정)
+# 8. 상단 주요 지표 (KPI) 카드 영역
 # ---------------------------------------------------------
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
@@ -285,12 +275,11 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ---------------------------------------------------------
 # 9. 시각화 차트 섹션 (Plotly 인터랙티브 차트)
 # ---------------------------------------------------------
-# 거래 현황 다차원 시각화 타이틀 - Bold(700) 처리
 st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
 
 tab1, tab2, tab3 = st.tabs(["🏛️ 입금은행 점유율", "🗺️ 지역별 거래 현황", "🏢 업종별 분포"])
 
-# Plotly 차트 공통 테마 함수 (Gmarket Sans 지정)
+# Plotly 차트 공통 테마 함수
 def apply_chart_theme(fig):
     fig.update_layout(
         plot_bgcolor="white",
@@ -332,7 +321,7 @@ with tab1:
         )
         
         max_val = top10_bank_df['거래건수'].max() if not top10_bank_df.empty else 100000
-        step = max(20000, int(max_val // 5))
+        step = max(20000, int(max_val // 5)) if max_val > 0 else 20000
         tick_vals = list(range(0, int(max_val) + step, step))
         tick_texts = [f"{v//10000}만" if v >= 10000 else (f"{v:,}" if v > 0 else "0") for v in tick_vals]
         
@@ -373,12 +362,11 @@ with tab1:
         fig_bank_pie = apply_chart_theme(fig_bank_pie)
         st.plotly_chart(fig_bank_pie, use_container_width=True)
 
-# Tab 2: 지역별 거래 현황 (예쁜 파스텔 블루-핑크 스케일)
+# Tab 2: 지역별 거래 현황
 with tab2:
     sido_df = filtered_df['시도'].value_counts().reset_index()
     sido_df.columns = ['지역(시/도)', '거래건수']
     
-    # 세련된 파스텔톤 컬러 스케일 적용
     pastel_blue_pink = ['#D6E4FF', '#ADC6FF', '#85A5FF', '#9254DE', '#F759AB']
     
     fig_sido = px.bar(
@@ -392,7 +380,7 @@ with tab2:
     fig_sido = apply_chart_theme(fig_sido)
     st.plotly_chart(fig_sido, use_container_width=True)
 
-# Tab 3: 업종별 분포 (예쁜 파스텔 민트-퍼플 스케일)
+# Tab 3: 업종별 분포
 with tab3:
     cat_df = filtered_df['업종구분'].value_counts().reset_index()
     cat_df.columns = ['업종구분', '거래건수']
@@ -422,8 +410,11 @@ display_cols = [
     '시도', '도로명주소', '업종구분', '입금은행', '입금자', '입금금액', '입금구분'
 ]
 
+# 존재하는 컬럼만 필터링하여 안전하게 표출
+valid_cols = [col for col in display_cols if col in filtered_df.columns]
+
 st.dataframe(
-    filtered_df[display_cols],
+    filtered_df[valid_cols],
     use_container_width=True,
     height=480
 )
