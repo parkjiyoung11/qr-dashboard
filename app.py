@@ -15,7 +15,6 @@ st.set_page_config(
 # 2. Custom CSS 및 Gmarket Sans 폰트 설정
 st.markdown("""
 <style>
-    /* Gmarket Sans 폰트 안전 로드 */
     @font-face {
         font-family: 'GmarketSans';
         src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff2') format('woff2');
@@ -29,16 +28,16 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* 전역 폰트 지정: Medium(500)으로 선명함 확보 */
-    html, body, p, span, label, input, button, select {
+    /* 일반 텍스트에만 폰트 적용 (Streamlit 내부 아이콘/클래스 제외) */
+    html, body, p, span:not([class*="st-"]), label, input, button, select {
         font-family: 'GmarketSans', -apple-system, sans-serif !important;
         font-weight: 500 !important;
         color: #1e293b;
     }
 
-    /* Streamlit 아이콘 및 확장 버튼 텍스트 겹침 방지 */
-    [class*="st-"] i, [class*="st-"] svg, .material-icons {
-        font-family: inherit !important;
+    /* Streamlit 아이콘 및 익스팬더 화살표 클래스 충돌 방지 */
+    [class*="st-"] *, [data-testid="stExpanderToggleIcon"], .streamlit-expanderHeader span {
+        font-family: inherit;
     }
 
     .main {
