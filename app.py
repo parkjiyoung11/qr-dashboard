@@ -27,19 +27,20 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* 대시보드 메인 배경 */
+    /* 본문 텍스트에만 안전하게 GmarketSans 적용 */
+    body, p, label, select, .stMarkdown p {
+        font-family: 'GmarketSans', -apple-system, sans-serif !important;
+        font-weight: 500;
+        color: #1e293b;
+    }
+
     .main {
         background-color: #f8fafc;
     }
-
-    /* 제목 및 본문 텍스트에만 안전하게 GmarketSans 적용 (Streamlit 아이콘 완전 보존) */
-    .dashboard-header, .dashboard-subtitle, .section-bold-title, 
-    .metric-card, .metric-title, .metric-value, .metric-unit,
-    h1, h2, h3, h4, h5, .stMarkdown p {
-        font-family: 'GmarketSans', -apple-system, sans-serif !important;
-    }
-
+    
+    /* 대제목 */
     .dashboard-header {
+        font-family: 'GmarketSans', sans-serif !important;
         font-size: 2.2rem;
         font-weight: 700 !important;
         color: #0f172a;
@@ -48,13 +49,15 @@ st.markdown("""
     }
 
     .dashboard-subtitle {
+        font-family: 'GmarketSans', sans-serif !important;
         color: #64748b;
         font-size: 1.0rem;
-        font-weight: 500 !important;
+        font-weight: 500;
         margin-bottom: 22px;
     }
 
     .section-bold-title {
+        font-family: 'GmarketSans', sans-serif !important;
         font-weight: 700 !important;
         color: #0f172a;
     }
@@ -75,12 +78,14 @@ st.markdown("""
         text-align: left;
     }
     .metric-title {
+        font-family: 'GmarketSans', sans-serif !important;
         font-size: 1.0rem !important;
         font-weight: 500 !important;
         color: #475569;
         margin-bottom: 10px;
     }
     .metric-value {
+        font-family: 'GmarketSans', sans-serif !important;
         font-size: 1.85rem;
         font-weight: 700 !important;
         color: #0f172a;
@@ -104,9 +109,23 @@ st.markdown("""
         margin: 22px 0;
     }
 
-    /* ----------------------------------------------------
-       원형 페이지네이션 버튼 디자인 및 가운데 정렬
-    ---------------------------------------------------- */
+    /* ------------------------------------------------------------------
+       파일 업로더 내부의 'Upload' 기호/영단어/용량 텍스트 완전 숨김 처리
+    ------------------------------------------------------------------ */
+    [data-testid="stFileUploader"] section > div:first-child {
+        display: none !important;
+    }
+    [data-testid="stFileUploader"] section {
+        padding: 14px 16px !important;
+        background-color: #f1f5f9 !important;
+        border: 1px dashed #cbd5e1 !important;
+        border-radius: 8px !important;
+        min-height: 48px !important;
+    }
+
+    /* ------------------------------------------------------------------
+       원형 페이지네이션 버튼 디자인 (완벽 중앙 정렬)
+    ------------------------------------------------------------------ */
     div[data-testid="stHorizontalBlock"] button[kind="secondary"],
     div[data-testid="stHorizontalBlock"] button[kind="primary"] {
         width: 36px !important;
@@ -307,7 +326,7 @@ with kpi4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 9. 시각화 차트 섹션 (영문 k -> 한글 '만' 완벽 변환)
+# 9. 시각화 차트 섹션 (모든 축 + 컬러바 k단위 -> '만' 한글 완벽 통일)
 # ---------------------------------------------------------
 st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
 
@@ -323,11 +342,11 @@ def apply_chart_theme(fig):
     )
     return fig
 
-# 한글 축 눈금 생성 도우미 함수
+# 한글 축 및 컬러바 눈금 생성 함수 (k 표기 완전 방지)
 def get_korean_axis_ticks(max_val):
     if max_val <= 0:
         return [0], ["0"]
-    step = max(10000, int(max_val // 5))
+    step = max(10000, int(max_val // 4))
     step = int(math.ceil(step / 10000.0) * 10000)
     vals = list(range(0, int(max_val) + step, step))
     texts = ["0" if v == 0 else (f"{v//10000}만" if v >= 10000 else f"{v:,}") for v in vals]
@@ -404,7 +423,7 @@ with tab1:
     else:
         st.info("조회된 입금은행 데이터가 없습니다.")
 
-# Tab 2: 지역별 거래 현황
+# Tab 2: 지역별 거래 현황 (컬러바 눈금까지 한글 '만' 적용)
 with tab2:
     if '시도' in filtered_df.columns and not filtered_df.empty:
         sido_df = filtered_df['시도'].value_counts().reset_index()
@@ -429,6 +448,12 @@ with tab2:
                 tickvals=t_vals_s,
                 ticktext=t_texts_s
             ),
+            coloraxis_colorbar=dict(
+                title="거래건수",
+                tickmode='array',
+                tickvals=t_vals_s,
+                ticktext=t_texts_s
+            ),
             height=400
         )
         fig_sido = apply_chart_theme(fig_sido)
@@ -436,7 +461,7 @@ with tab2:
     else:
         st.info("조회된 지역 데이터가 없습니다.")
 
-# Tab 3: 업종별 분포
+# Tab 3: 업종별 분포 (컬러바 눈금까지 한글 '만' 적용)
 with tab3:
     if '업종구분' in filtered_df.columns and not filtered_df.empty:
         cat_df = filtered_df['업종구분'].value_counts().reset_index()
@@ -457,6 +482,12 @@ with tab3:
         
         fig_cat.update_layout(
             yaxis=dict(
+                tickmode='array',
+                tickvals=t_vals_c,
+                ticktext=t_texts_c
+            ),
+            coloraxis_colorbar=dict(
+                title="거래건수",
                 tickmode='array',
                 tickvals=t_vals_c,
                 ticktext=t_texts_c
