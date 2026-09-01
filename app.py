@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. 전역 스타일 및 Custom CSS (Gmarket Sans 폰트, 반응형 캡슐 페이지네이션)
+# 2. Custom CSS
 st.markdown("""
 <style>
     @font-face {
@@ -69,7 +69,6 @@ st.markdown("""
         font-size: 1.05rem !important;
     }
 
-    /* KPI 카드 디자인 */
     .metric-card {
         background-color: #ffffff;
         border-radius: 14px;
@@ -110,7 +109,6 @@ st.markdown("""
         margin: 22px 0;
     }
 
-    /* 파일 업로더 내부 아이콘/텍스트 숨김 처리 */
     [data-testid="stFileUploader"] section > div:first-child {
         display: none !important;
     }
@@ -122,7 +120,6 @@ st.markdown("""
         min-height: 48px !important;
     }
 
-    /* 페이지네이션 버튼 디자인 (원형/캡슐형 & 줄바꿈 방지) */
     div[data-testid="stHorizontalBlock"] button[kind="secondary"],
     div[data-testid="stHorizontalBlock"] button[kind="primary"] {
         min-width: 36px !important;
@@ -170,32 +167,26 @@ PASTEL_COLOR_SEQUENCE = [
 PASTEL_BLUE_PURPLE = ['#D6E4FF', '#ADC6FF', '#85A5FF', '#9254DE', '#F759AB']
 PASTEL_MINT_PURPLE = ['#E6F7FF', '#BAE7FF', '#91D5FF', '#B37FEB', '#9254DE']
 
-# 4. 데이터 로드 및 전처리 가공 함수
+# 4. 고속 메모리 다이어트 데이터 로드 및 전처리
 @st.cache_data
 def load_and_preprocess_data():
     df = pd.read_parquet('merged_data.parquet')
     
-    # 1) 입금일시 및 파생 시간 변수 생성
-    date_col = None
-    for col in ['최종거래일시', '입금일시', '거래일시', '입금일자', '거래일자']:
-        if col in df.columns:
-            date_col = col
-            break
-            
+    # 1) 날짜/시간 벡터 연산
+    date_col = next((c for c in ['최종거래일시', '입금일시', '거래일시', '입금일자', '거래일자'] if c in df.columns), None)
     if date_col:
-        df['datetime_parsed'] = pd.to_datetime(df[date_col], errors='coerce')
+        dt_series = pd.to_datetime(df[date_col], errors='coerce')
     else:
-        df['datetime_parsed'] = pd.Timestamp.now()
+        dt_series = pd.Series(pd.Timestamp.now(), index=df.index)
         
-    df['입금일자'] = df['datetime_parsed'].dt.date
-    df['입금연월'] = df['datetime_parsed'].dt.strftime('%Y-%m')
+    df['입금일자'] = dt_series.dt.date
+    df['입금연월'] = dt_series.dt.strftime('%Y-%m').astype('category')
     
-    # 요일 파생 (0=월요일 ... 6=일요일) -> 한글 요일 매핑
-    day_map = {0: '월요일', 1: '화요일', 2: '수요일', 3: '목요일', 4: '금요일', 5: '토요일', 6: '일요일'}
-    df['요일'] = df['datetime_parsed'].dt.dayofweek.map(day_map)
-    df['요일순서'] = df['datetime_parsed'].dt.dayofweek.map({6:0, 0:1, 1:2, 2:3, 3:4, 4:5, 5:6}) # 일요일부터 시작 정렬용
+    day_names = np.array(['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'])
+    day_indices = dt_series.dt.dayofweek.fillna(0).astype(int)
+    df['요일'] = pd.Categorical(day_names[day_indices], categories=['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'], ordered=True)
 
-    # 2) 은행명 표준화
+    # 2) 은행명 표준화 및 Category 변환
     if '입금은행' in df.columns:
         bank_rename_map = {
             '006': '006(국민은행(구 한국주택은행))',
@@ -205,48 +196,47 @@ def load_and_preprocess_data():
             '6': '006(국민은행(구 한국주택은행))',
             '30': '030(수협중앙회)'
         }
-        df['입금은행'] = df['입금은행'].replace(bank_rename_map).fillna('미분류')
+        df['입금은행'] = df['입금은행'].replace(bank_rename_map).fillna('미분류').astype('category')
 
-    # 3) 업체상태 -> 통합 상태구분(정상 / 해지) 생성
-    status_col = None
-    for sc in ['업체상태', '상태구분', '상태', '영업상태']:
-        if sc in df.columns:
-            status_col = sc
-            break
-            
+    # 3) 업체상태 -> 통합 상태구분 벡터 연산
+    status_col = next((c for c in ['업체상태', '상태구분', '상태', '영업상태'] if c in df.columns), None)
     if status_col:
-        def categorize_status(val):
-            val_str = str(val).strip()
-            if any(k in val_str for k in ['정상', '일시정지', '벌칙']):
-                return '정상'
-            elif any(k in val_str for k in ['해지', '폐업', '중단']):
-                return '해지'
-            return '정상'  # 기본값
-        df['통합상태구분'] = df[status_col].apply(categorize_status)
+        status_str = df[status_col].astype(str)
+        is_cancel = status_str.str.contains('해지|폐업|중단', regex=True)
+        df['통합상태구분'] = np.where(is_cancel, '해지', '정상')
+        df['통합상태구분'] = df['통합상태구분'].astype('category')
     else:
-        df['통합상태구분'] = '정상'
+        df['통합상태구분'] = pd.Categorical(['정상'] * len(df))
 
-    # 4) 세부 입금구분 확장 (000단위, 리워드/보상금, 일반/기타)
-    def categorize_deposit_detail(row):
-        amt = row.get('입금금액', 0)
-        memo = str(row.get('입금자', '')) + " " + str(row.get('입금구분', ''))
+    # 4) 세부 입금구분 벡터 연산
+    if '입금금액' in df.columns:
+        df['입금금액'] = pd.to_numeric(df['입금금액'], errors='coerce').fillna(0).astype('int64')
         
-        # 1. 리워드/보상금 키워드 검출
-        if any(keyword in memo for keyword in ['보상', '리워드', '캐시', '이벤트', '환급', '포인트']):
-            return '리워드/보상금 입금'
+    memo_series = ""
+    if '입금자' in df.columns:
+        memo_series += df['입금자'].astype(str) + " "
+    if '입금구분' in df.columns:
+        memo_series += df['입금구분'].astype(str)
         
-        # 2. 금액 단위 검출
-        try:
-            amt_int = int(amt)
-            if amt_int > 0 and amt_int % 1000 == 0:
-                return '소비자 정액입금(000단위)'
-            elif amt_int > 0:
-                return '일반/기타 소액입금'
-        except:
-            pass
-        return '기타 입금'
+    is_reward = memo_series.str.contains('보상|리워드|캐시|이벤트|환급|포인트', regex=True) if isinstance(memo_series, pd.Series) else False
+    is_thousand = (df['입금금액'] > 0) & (df['입금금액'] % 1000 == 0)
+    
+    conds = [
+        is_reward,
+        is_thousand,
+        df['입금금액'] > 0
+    ]
+    choices = [
+        '리워드/보상금 입금',
+        '소비자 정액입금(000단위)',
+        '일반/기타 소액입금'
+    ]
+    df['세부입금구분'] = pd.Categorical(np.select(conds, choices, default='기타 입금'))
 
-    df['세부입금구분'] = df.apply(categorize_deposit_detail, axis=1)
+    # 중복 문자열 카테고리화로 메모리 최적화
+    for col in ['시도', '업종구분']:
+        if col in df.columns:
+            df[col] = df[col].astype('category')
 
     return df
 
@@ -283,16 +273,14 @@ st.sidebar.markdown("---")
 
 search_store_id = st.sidebar.text_input("🎯 판매점 ID / 상호 검색", value="", placeholder="판매점ID 또는 상호 입력...")
 
-# 1) 판매점 상태 필터 (정상 / 해지)
-status_options = ['전체'] + sorted(df['통합상태구분'].unique().tolist())
+status_options = ['전체'] + sorted([str(x) for x in df['통합상태구분'].unique()])
 selected_status = st.sidebar.selectbox("🏷️ 판매점 상태구분", options=status_options, index=0)
 
-# 2) 기간 선택 모드 (일자별 vs 월별)
 period_mode = st.sidebar.radio("📅 기간 필터 모드", ["일자별 선택", "월별(연월) 선택"], horizontal=True)
 
 min_date = df['입금일자'].min()
 max_date = df['입금일자'].max()
-all_months = sorted(df['입금연월'].unique().tolist())
+all_months = sorted([str(x) for x in df['입금연월'].unique()])
 
 if period_mode == "일자별 선택":
     date_range = st.sidebar.date_input("조회 기간 설정", value=(min_date, max_date), min_value=min_date, max_value=max_date)
@@ -301,8 +289,7 @@ else:
     date_range = None
     selected_months = st.sidebar.multiselect("조회 연월 선택", options=all_months, default=all_months, placeholder="월을 선택하세요")
 
-# 3) 세부 입금구분 필터
-deposit_detail_options = sorted(df['세부입금구분'].unique())
+deposit_detail_options = sorted([str(x) for x in df['세부입금구분'].unique()])
 selected_deposit_details = st.sidebar.multiselect(
     "💵 세부 입금금액 구분",
     options=deposit_detail_options,
@@ -313,45 +300,42 @@ selected_deposit_details = st.sidebar.multiselect(
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 세부 항목 필터")
 
-bank_options = sorted(df['입금은행'].dropna().unique()) if '입금은행' in df.columns else []
-sido_options = sorted(df['시도'].dropna().astype(str).unique()) if '시도' in df.columns else []
-category_options = sorted(df['업종구분'].dropna().astype(str).unique()) if '업종구분' in df.columns else []
+bank_options = sorted([str(x) for x in df['입금은행'].dropna().unique()]) if '입금은행' in df.columns else []
+sido_options = sorted([str(x) for x in df['시도'].dropna().unique()]) if '시도' in df.columns else []
+category_options = sorted([str(x) for x in df['업종구분'].dropna().unique()]) if '업종구분' in df.columns else []
 
 selected_banks = st.sidebar.multiselect("🏛️ 입금은행", options=bank_options, placeholder="선택하세요")
 selected_sido = st.sidebar.multiselect("🗺️ 지역(시/도)", options=sido_options, placeholder="선택하세요")
 selected_category = st.sidebar.multiselect("🏢 업종구분", options=category_options, placeholder="선택하세요")
 
-# --- 데이터 필터링 실행 ---
-filtered_df = df.copy()
+# --- 메모리 절약형 Boolean Mask 필터링 ---
+mask = pd.Series(True, index=df.index)
 
-# 상태 필터
 if selected_status != '전체':
-    filtered_df = filtered_df[filtered_df['통합상태구분'] == selected_status]
+    mask &= (df['통합상태구분'] == selected_status)
 
-# 기간 필터
 if period_mode == "일자별 선택" and date_range and isinstance(date_range, (list, tuple)) and len(date_range) == 2:
-    filtered_df = filtered_df[(filtered_df['입금일자'] >= date_range[0]) & (filtered_df['입금일자'] <= date_range[1])]
+    mask &= (df['입금일자'] >= date_range[0]) & (df['입금일자'] <= date_range[1])
 elif period_mode == "월별(연월) 선택" and selected_months:
-    filtered_df = filtered_df[filtered_df['입금연월'].isin(selected_months)]
+    mask &= df['입금연월'].isin(selected_months)
 
-# 검색 필터 (ID or 상호)
 if search_store_id.strip():
     q = search_store_id.strip()
-    id_cond = filtered_df['판매점ID'].astype(str).str.contains(q) if '판매점ID' in filtered_df.columns else False
-    name_cond = filtered_df['상호'].astype(str).str.contains(q) if '상호' in filtered_df.columns else False
-    filtered_df = filtered_df[id_cond | name_cond]
+    id_cond = df['판매점ID'].astype(str).str.contains(q) if '판매점ID' in df.columns else False
+    name_cond = df['상호'].astype(str).str.contains(q) if '상호' in df.columns else False
+    mask &= (id_cond | name_cond)
 
-# 세부 입금구분 필터
 if selected_deposit_details:
-    filtered_df = filtered_df[filtered_df['세부입금구분'].isin(selected_deposit_details)]
+    mask &= df['세부입금구분'].isin(selected_deposit_details)
 
-# 다중 선택 필터
 if selected_banks:
-    filtered_df = filtered_df[filtered_df['입금은행'].isin(selected_banks)]
+    mask &= df['입금은행'].isin(selected_banks)
 if selected_sido:
-    filtered_df = filtered_df[filtered_df['시도'].isin(selected_sido)]
+    mask &= df['시도'].isin(selected_sido)
 if selected_category:
-    filtered_df = filtered_df[filtered_df['업종구분'].isin(selected_category)]
+    mask &= df['업종구분'].isin(selected_category)
+
+filtered_df = df[mask]
 
 # ---------------------------------------------------------
 # 8. 상단 주요 지표 (KPI) 카드 영역
@@ -398,7 +382,7 @@ with kpi4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 9. 다차원 시각화 차트 섹션 (월별/요일별/은행/지역/업종)
+# 9. 다차원 시각화 차트 섹션
 # ---------------------------------------------------------
 st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
 
@@ -428,20 +412,19 @@ def get_korean_axis_ticks(max_val):
     texts = ["0" if v == 0 else (f"{v//10000}만" if v >= 10000 else f"{v:,}") for v in vals]
     return vals, texts
 
-# Tab 1: 월별 입금 추이 (신설)
+# Tab 1: 월별 입금 추이
 with tab_month:
     if not filtered_df.empty:
-        month_summary = filtered_df.groupby('입금연월').agg(
+        month_summary = filtered_df.groupby('입금연월', observed=True).agg(
             거래건수=('입금금액', 'count'),
             총입금액=('입금금액', 'sum')
         ).reset_index().sort_values('입금연월')
 
         fig_month = make_subplots(specs=[[{"secondary_y": True}]])
         
-        # 거래건수 막대
         fig_month.add_trace(
             go.Bar(
-                x=month_summary['입금연월'],
+                x=month_summary['입금연월'].astype(str),
                 y=month_summary['거래건수'],
                 name="거래건수 (건)",
                 marker_color='#85A5FF',
@@ -452,10 +435,9 @@ with tab_month:
             secondary_y=False
         )
 
-        # 총입금액 라인
         fig_month.add_trace(
             go.Scatter(
-                x=month_summary['입금연월'],
+                x=month_summary['입금연월'].astype(str),
                 y=month_summary['총입금액'],
                 name="총 입금액 (원)",
                 mode='lines+markers+text',
@@ -482,17 +464,15 @@ with tab_month:
     else:
         st.info("조회된 기간 내 데이터가 없습니다.")
 
-# Tab 2: 요일별 거래 비중 (신설)
+# Tab 2: 요일별 거래 비중
 with tab_day:
     if not filtered_df.empty:
         col_d1, col_d2 = st.columns([1.1, 0.9])
         
-        # 일요일~토요일 순 정렬
-        day_order = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
-        day_summary = filtered_df.groupby('요일').agg(
+        day_summary = filtered_df.groupby('요일', observed=False).agg(
             거래건수=('입금금액', 'count'),
             총입금액=('입금금액', 'sum')
-        ).reindex(day_order).fillna(0).reset_index()
+        ).reset_index()
 
         with col_d1:
             fig_day_bar = px.bar(
@@ -535,7 +515,7 @@ with tab_day:
     else:
         st.info("조회된 요일 데이터가 없습니다.")
 
-# Tab 3: 입금은행 점유율 (전체 / TOP 10 선택 + 컬러바)
+# Tab 3: 입금은행 점유율
 with tab_bank:
     if '입금은행' in filtered_df.columns and not filtered_df.empty:
         col_ctrl1, col_ctrl2 = st.columns([1.5, 3])
@@ -549,6 +529,7 @@ with tab_bank:
         
         bank_df = filtered_df['입금은행'].value_counts().reset_index()
         bank_df.columns = ['입금은행', '거래건수']
+        bank_df['입금은행'] = bank_df['입금은행'].astype(str)
         
         if view_mode == "TOP 10 입금은행 보기":
             display_bank_df = bank_df.head(10).copy()
@@ -618,6 +599,7 @@ with tab_sido:
     if '시도' in filtered_df.columns and not filtered_df.empty:
         sido_df = filtered_df['시도'].value_counts().reset_index()
         sido_df.columns = ['지역(시/도)', '거래건수']
+        sido_df['지역(시/도)'] = sido_df['지역(시/도)'].astype(str)
         
         fig_sido = px.bar(
             sido_df, x='지역(시/도)', y='거래건수',
@@ -645,6 +627,7 @@ with tab_cat:
     if '업종구분' in filtered_df.columns and not filtered_df.empty:
         cat_df = filtered_df['업종구분'].value_counts().reset_index()
         cat_df.columns = ['업종구분', '거래건수']
+        cat_df['업종구분'] = cat_df['업종구분'].astype(str)
         
         fig_cat = px.bar(
             cat_df.head(10), x='업종구분', y='거래건수',
@@ -670,7 +653,7 @@ with tab_cat:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 10. 상세 거래 내역 데이터 테이블 (완벽 중앙 정렬 원형 버튼 페이징)
+# 10. 상세 거래 내역 데이터 테이블
 # ---------------------------------------------------------
 st.markdown(f"<h3 style='font-size:1.25rem;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#64748b; font-weight:500;'>(조회 결과: {len(filtered_df):,} 건)</span></h3>", unsafe_allow_html=True)
 
@@ -717,7 +700,6 @@ side_spacer = max(1, (24 - total_btns * 2) // 2)
 col_structure = [side_spacer] + [1.8] * total_btns + [side_spacer]
 btn_cols = st.columns(col_structure)
 
-# 1. 숫자 원형/캡슐 버튼들
 for idx, p_num in enumerate(page_range):
     with btn_cols[idx + 1]:
         b_type = "primary" if p_num == st.session_state.curr_page else "secondary"
@@ -725,19 +707,16 @@ for idx, p_num in enumerate(page_range):
             st.session_state.curr_page = p_num
             st.rerun()
 
-# 2. '›' 다음 10개 블록 이동
 with btn_cols[len(page_range) + 1]:
     if st.button("›", key="next_block", disabled=(end_p >= total_pages)):
         st.session_state.curr_page = min(total_pages, end_p + 1)
         st.rerun()
 
-# 3. '»' 맨 끝 이동
 with btn_cols[len(page_range) + 2]:
     if st.button("»", key="last_page", disabled=(st.session_state.curr_page == total_pages or total_pages == 0)):
         st.session_state.curr_page = total_pages
         st.rerun()
 
-# 페이지 정보 표기
 st.markdown(
     f"<p style='text-align: center; color: #64748b; font-size: 0.9rem; margin-top: 14px; font-family: GmarketSans;'>"
     f"페이지 <b>{st.session_state.curr_page:,}</b> / {total_pages:,} (총 {total_items:,} 건)"
