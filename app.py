@@ -32,17 +32,13 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* 전역 폰트 및 배경 */
     html, body, [class*="css"], .stMarkdown p, label, select {
         font-family: 'GmarketSans', -apple-system, BlinkMacSystemFont, sans-serif !important;
         color: #191F28;
     }
 
-    .main {
-        background-color: #F2F4F6;
-    }
+    .main { background-color: #F2F4F6; }
 
-    /* 토스 스타일 메인 헤더 */
     .toss-header {
         font-size: 2.2rem;
         font-weight: 700 !important;
@@ -58,7 +54,6 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    /* 토스 스타일 부드러운 카드 & 호버 리프트 */
     .toss-card {
         background-color: #FFFFFF;
         border-radius: 20px;
@@ -93,7 +88,6 @@ st.markdown("""
         margin-left: 2px;
     }
 
-    /* 인사이트 브리핑 바 */
     .toss-insight-box {
         background: linear-gradient(135deg, #E8F3FF 0%, #F4F7FF 100%);
         border-radius: 16px;
@@ -105,7 +99,6 @@ st.markdown("""
         gap: 12px;
     }
 
-    /* 선택된 필터 뱃지(Tag) */
     .active-filter-badge {
         background-color: #E8F3FF;
         color: #1B64DA;
@@ -120,7 +113,6 @@ st.markdown("""
         margin-bottom: 12px;
     }
 
-    /* 탭 디자인 */
     button[data-baseweb="tab"] {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 700 !important;
@@ -131,7 +123,6 @@ st.markdown("""
         color: #3182F6 !important;
     }
 
-    /* 파일 업로더 */
     [data-testid="stFileUploader"] section > div:first-child { display: none !important; }
     [data-testid="stFileUploader"] section {
         padding: 14px 16px !important;
@@ -140,7 +131,6 @@ st.markdown("""
         border-radius: 14px !important;
     }
 
-    /* 토스 스타일 버튼 */
     div[data-testid="stDownloadButton"] button {
         border-radius: 12px !important;
         font-family: 'GmarketSans', sans-serif !important;
@@ -157,7 +147,6 @@ st.markdown("""
         color: #0E49B5 !important;
     }
 
-    /* 원형/캡슐 페이지네이션 */
     div[data-testid="stHorizontalBlock"] button[kind="secondary"],
     div[data-testid="stHorizontalBlock"] button[kind="primary"] {
         min-width: 38px !important;
@@ -195,7 +184,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 토스 테마 컬러 팔레트
+# 토스 테마 컬러
 TOSS_BLUE = '#3182F6'
 TOSS_GRADIENT_BLUES = ['#E8F3FF', '#B8D7FF', '#74ABFF', '#3182F6', '#1B64DA']
 TOSS_PASTEL_SEQUENCE = ['#3182F6', '#20C997', '#FFB300', '#F06595', '#845EF7', '#339AF0', '#51CF66', '#FCC419', '#FF922B']
@@ -251,12 +240,23 @@ def get_clean_data():
     else:
         df['입금금액'] = 0
 
-    memo_str = df['입금자'].astype(str).fillna('') if '입금자' in df.columns else pd.Series('', index=df.index)
-    is_rew = memo_str.str.contains('보상|리워드|캐시|이벤트|환급|포인트', regex=True, na=False)
-    is_th = (df['입금금액'] > 0) & (df['입금금액'] % 1000 == 0)
+    # 1) 10만원 초과 구분
+    df['금액규모구분'] = np.where(df['입금금액'] > 100000, '10만원 초과', '10만원 이하')
 
-    conds = [is_rew, is_th, df['입금금액'] > 0]
-    choices = ['리워드/보상금 입금', '소비자 정액입금(000단위)', '일반/기타 소액입금']
+    # 2) 000단위 정액 여부
+    df['정액단위구분'] = np.where((df['입금금액'] > 0) & (df['입금금액'] % 1000 == 0), '000단위 정액입금', '000단위 아님')
+
+    # 3) 세부 입금 유형 (000단위 정액 / 리워드(1원) / 일반 비정액)
+    conds = [
+        (df['입금금액'] > 0) & (df['입금금액'] % 1000 == 0),
+        (df['입금금액'] == 1),
+        (df['입금금액'] > 0) & (df['입금금액'] % 1000 != 0)
+    ]
+    choices = [
+        '000단위 정액입금',
+        '리워드 입금 (1원)',
+        '일반 비정액 소액입금'
+    ]
     df['세부입금구분'] = np.select(conds, choices, default='기타 입금')
 
     for col in ['시도', '업종구분']:
@@ -271,16 +271,16 @@ except Exception as e:
     st.error(f"데이터 파일 읽기 오류: {e}")
     st.stop()
 
-# 4. 차트 클릭(Drill-down) 필터 세션 관리
+# 4. 세션 상태 관리
 if 'chart_filter' not in st.session_state:
-    st.session_state.chart_filter = None  # {'col': '입금연월', 'val': '2026년 06월'}
+    st.session_state.chart_filter = None
 
 # 5. 헤더 영역
 st.markdown('<div class="toss-header">💳 QR플레이트 입금거래 통합 리포트</div>', unsafe_allow_html=True)
 st.markdown('<div class="toss-subtitle">원클릭 차트 필터링 및 실시간 정산 통계를 한눈에 확인하세요.</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 6. 사이드바 검색 및 필터
+# 6. 사이드바 검색 및 계층형 금액 필터
 # ---------------------------------------------------------
 st.sidebar.markdown("### 🔍 검색 & 기본 필터")
 st.sidebar.markdown("---")
@@ -302,8 +302,23 @@ else:
     date_range = None
     selected_months = st.sidebar.multiselect("조회 연월 선택", options=all_months, default=all_months, placeholder="월을 선택하세요")
 
-deposit_detail_options = sorted(list(df['세부입금구분'].unique()))
-selected_deposit_details = st.sidebar.multiselect("💵 세부 입금금액 구분", options=deposit_detail_options, default=deposit_detail_options, placeholder="선택하세요")
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 💵 금액 규모 & 단위별 필터")
+
+# 1) 10만원 초과/이하 필터
+selected_scale = st.sidebar.radio("1️⃣ 금액 규모 선택", ["전체 금액", "10만원 초과만", "10만원 이하만"], horizontal=True)
+
+# 2) 000단위 정액 여부 필터
+selected_unit = st.sidebar.radio("2️⃣ 금액 단위 선택", ["전체 단위", "000단위 정액입금", "000단위 아님"], horizontal=True)
+
+# 3) 000단위가 아닐 때만 리워드(1원) 여부 추가 선택 옵션 표시
+if selected_unit == "000단위 아님":
+    reward_option = st.sidebar.selectbox(
+        "↳ 세부 구분 (리워드/비정액)",
+        ["전체 (000단위 아님)", "리워드 입금 (1원)", "일반 비정액 소액입금 (1원 제외)"]
+    )
+else:
+    reward_option = None
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 세부 항목 필터")
@@ -333,8 +348,22 @@ if search_store_id.strip():
     name_cond = base_filtered_df['상호'].astype(str).str.contains(q, na=False) if '상호' in base_filtered_df.columns else False
     base_filtered_df = base_filtered_df[id_cond | name_cond]
 
-if selected_deposit_details:
-    base_filtered_df = base_filtered_df[base_filtered_df['세부입금구분'].isin(selected_deposit_details)]
+# 10만원 초과 필터링
+if selected_scale == "10만원 초과만":
+    base_filtered_df = base_filtered_df[base_filtered_df['금액규모구분'] == '10만원 초과']
+elif selected_scale == "10만원 이하만":
+    base_filtered_df = base_filtered_df[base_filtered_df['금액규모구분'] == '10만원 이하']
+
+# 000단위 정액 필터링
+if selected_unit == "000단위 정액입금":
+    base_filtered_df = base_filtered_df[base_filtered_df['정액단위구분'] == '000단위 정액입금']
+elif selected_unit == "000단위 아님":
+    base_filtered_df = base_filtered_df[base_filtered_df['정액단위구분'] == '000단위 아님']
+    if reward_option == "리워드 입금 (1원)":
+        base_filtered_df = base_filtered_df[base_filtered_df['세부입금구분'] == '리워드 입금 (1원)']
+    elif reward_option == "일반 비정액 소액입금 (1원 제외)":
+        base_filtered_df = base_filtered_df[base_filtered_df['세부입금구분'] == '일반 비정액 소액입금']
+
 if selected_banks:
     base_filtered_df = base_filtered_df[base_filtered_df['입금은행'].isin(selected_banks)]
 if selected_sido:
@@ -387,26 +416,33 @@ with kpi4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 8. 토스 스타일 스마트 브리핑 (생동감 있는 데이터 요약)
+# 8. 스마트 브리핑 배너
 # ---------------------------------------------------------
 if total_tx > 0:
-    top_bank_val = base_filtered_df['입금은행'].value_counts().index[0] if '입금은행' in base_filtered_df.columns else '-'
-    top_day_val = base_filtered_df['요일'].value_counts().index[0] if '요일' in base_filtered_df.columns else '-'
+    reward_cnt = len(base_filtered_df[base_filtered_df['세부입금구분'] == '리워드 입금 (1원)'])
+    over100k_cnt = len(base_filtered_df[base_filtered_df['금액규모구분'] == '10만원 초과'])
     st.markdown(f"""
         <div class="toss-insight-box">
             <span style="font-size:1.3rem;">💡</span>
             <span style="font-size:0.95rem; color:#1B64DA; line-height:1.4;">
-                현재 필터 조건에서 가장 많은 입금이 발생한 요일은 <b>{top_day_val}</b>이며, 점유율 1위 은행은 <b>{top_bank_val}</b>입니다.
-                <br><span style="font-size:0.85rem; color:#6B7684;">👉 아래 차트의 특정 막대를 클릭하면 해당 데이터만 아래 상세 목록에 즉시 필터링됩니다.</span>
+                현재 조건에서 <b>10만원 초과 고액 거래는 {over100k_cnt:,}건</b>이며, <b>1원 리워드 입금은 {reward_cnt:,}건</b>입니다.
+                <br><span style="font-size:0.85rem; color:#6B7684;">👉 차트 막대를 클릭하면 해당 항목만 아래 목록에 즉시 필터링됩니다.</span>
             </span>
         </div>
     """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 9. 다차원 시각화 차트 섹션 (토스 디자인 + 인터랙티브 선택)
+# 9. 다차원 시각화 차트 섹션
 # ---------------------------------------------------------
 st.markdown("<h2 class='section-bold-title' style='font-size: 1.45rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
-tab_month, tab_day, tab_bank, tab_sido, tab_cat = st.tabs(["📅 월별 입금 추이", "📆 요일별 거래 비중", "🏛️ 입금은행 점유율", "🗺️ 지역별 거래 현황", "🏢 업종별 분포"])
+tab_month, tab_day, tab_amount, tab_bank, tab_sido, tab_cat = st.tabs([
+    "📅 월별 입금 추이", 
+    "📆 요일별 거래 비중", 
+    "💵 금액구분/단위 분석",
+    "🏛️ 입금은행 점유율", 
+    "🗺️ 지역별 거래 현황", 
+    "🏢 업종별 분포"
+])
 
 def apply_toss_theme(fig):
     fig.update_layout(
@@ -485,7 +521,7 @@ with tab_month:
         a_vals_m, a_texts_m = get_korean_amount_ticks(max_amt_v * 1.3)
 
         fig_m.update_layout(
-            title="<b>월별 거래건수 및 총 입금액 추이</b> (막대 클릭 시 해당 월 상세 필터링)", 
+            title="<b>월별 거래건수 및 총 입금액 추이</b> (클릭 시 해당 월 필터링)", 
             xaxis=dict(type='category', title=""),
             yaxis=dict(title="거래건수", tickmode='array', tickvals=t_vals_m, ticktext=t_texts_m, gridcolor="#F2F4F6"), 
             yaxis2=dict(title="총 입금액", tickmode='array', tickvals=a_vals_m, ticktext=a_texts_m, showgrid=False), 
@@ -493,7 +529,6 @@ with tab_month:
             height=430
         )
         
-        # Plotly 선택 이벤트 활성화
         selected_m_points = st.plotly_chart(
             apply_toss_theme(fig_m), 
             use_container_width=True, 
@@ -501,7 +536,6 @@ with tab_month:
             selection_mode="points",
             key="chart_select_month"
         )
-        
         if selected_m_points and selected_m_points.get("selection") and selected_m_points["selection"]["points"]:
             pt = selected_m_points["selection"]["points"][0]
             st.session_state.chart_filter = {'col': '입금연월', 'val': pt['x']}
@@ -552,7 +586,57 @@ with tab_day:
     else:
         st.info("조회된 데이터가 없습니다.")
 
-# Tab 3: 입금은행 점유율
+# Tab 3: 금액구분/단위 분석 (신설)
+with tab_amount:
+    if total_tx > 0:
+        col_amt1, col_amt2 = st.columns(2)
+        
+        with col_amt1:
+            scale_df = base_filtered_df['금액규모구분'].value_counts().reset_index()
+            scale_df.columns = ['금액규모', '거래건수']
+            fig_scale = px.pie(
+                scale_df, 
+                names='금액규모', 
+                values='거래건수', 
+                title="<b>10만원 초과 vs 10만원 이하 비중</b>", 
+                hole=0.55,
+                color_discrete_sequence=['#3182F6', '#B8D7FF']
+            )
+            fig_scale.update_traces(textinfo='percent+label', texttemplate='%{label}<br>%{percent:.1%}')
+            fig_scale.update_layout(height=400)
+            st.plotly_chart(apply_toss_theme(fig_scale), use_container_width=True)
+
+        with col_amt2:
+            detail_df = base_filtered_df['세부입금구분'].value_counts().reset_index()
+            detail_df.columns = ['세부입금구분', '거래건수']
+            fig_detail = px.bar(
+                detail_df, 
+                x='세부입금구분', 
+                y='거래건수', 
+                title="<b>정액(000단위) vs 리워드(1원) vs 비정액 분포</b> (클릭 시 필터링)",
+                color='세부입금구분',
+                color_discrete_sequence=TOSS_PASTEL_SEQUENCE,
+                text='거래건수'
+            )
+            fig_detail.update_traces(texttemplate='%{text:,.0f}건', textposition='outside')
+            max_dt_v = detail_df['거래건수'].max()
+            t_vals_dt, t_texts_dt = get_korean_axis_ticks(max_dt_v * 1.2)
+            fig_detail.update_layout(xaxis=dict(type='category'), yaxis=dict(tickmode='array', tickvals=t_vals_dt, ticktext=t_texts_dt, gridcolor="#F2F4F6"), showlegend=False, height=400)
+            
+            selected_dt_points = st.plotly_chart(
+                apply_toss_theme(fig_detail), 
+                use_container_width=True,
+                on_select="rerun",
+                selection_mode="points",
+                key="chart_select_detail"
+            )
+            if selected_dt_points and selected_dt_points.get("selection") and selected_dt_points["selection"]["points"]:
+                pt = selected_dt_points["selection"]["points"][0]
+                st.session_state.chart_filter = {'col': '세부입금구분', 'val': pt['x']}
+    else:
+        st.info("조회된 데이터가 없습니다.")
+
+# Tab 4: 입금은행 점유율
 with tab_bank:
     if total_tx > 0 and '입금은행' in base_filtered_df.columns:
         b_df = base_filtered_df.groupby('입금은행').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('거래건수', ascending=False)
@@ -598,7 +682,7 @@ with tab_bank:
     else:
         st.info("조회된 데이터가 없습니다.")
 
-# Tab 4: 지역별 거래 현황
+# Tab 5: 지역별 거래 현황
 with tab_sido:
     if total_tx > 0 and '시도' in base_filtered_df.columns:
         s_df = base_filtered_df.groupby('시도').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('거래건수', ascending=False)
@@ -634,7 +718,7 @@ with tab_sido:
     else:
         st.info("조회된 데이터가 없습니다.")
 
-# Tab 5: 업종별 분포
+# Tab 6: 업종별 분포
 with tab_cat:
     if total_tx > 0 and '업종구분' in base_filtered_df.columns:
         c_df = base_filtered_df.groupby('업종구분').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('거래건수', ascending=False)
@@ -672,11 +756,10 @@ with tab_cat:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 10. 상세 거래 내역 데이터 테이블 (차트 클릭 드릴다운 적용)
+# 10. 상세 거래 내역 데이터 테이블 (차트 클릭 드릴다운 연동)
 # ---------------------------------------------------------
 table_filtered_df = base_filtered_df.copy()
 
-# 차트 클릭 인터랙션 필터 적용
 if st.session_state.chart_filter:
     f_col = st.session_state.chart_filter['col']
     f_val = st.session_state.chart_filter['val']
@@ -685,14 +768,13 @@ if st.session_state.chart_filter:
 
 table_tx_count = len(table_filtered_df)
 
-display_cols = ['최종거래일시', '판매점ID', '상호', '대표자', '명의자명', '통합상태구분', '시도', '도로명주소', '업종구분', '입금은행', '입금자', '입금금액', '세부입금구분']
+display_cols = ['최종거래일시', '판매점ID', '상호', '대표자', '명의자명', '통합상태구분', '금액규모구분', '시도', '도로명주소', '업종구분', '입금은행', '입금자', '입금금액', '세부입금구분']
 valid_cols = [c for c in display_cols if c in table_filtered_df.columns]
 
 col_tbl_head1, col_tbl_head2 = st.columns([3, 1.2])
 with col_tbl_head1:
     st.markdown(f"<h3 style='font-size:1.25rem; margin-top:6px;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#8B95A1; font-weight:500;'>(조회 결과: {table_tx_count:,} 건)</span></h3>", unsafe_allow_html=True)
     
-    # 클릭된 필터가 있을 경우 필터 태그 및 초기화 버튼 표시
     if st.session_state.chart_filter:
         c_name = st.session_state.chart_filter['col']
         c_val = st.session_state.chart_filter['val']
