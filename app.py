@@ -115,7 +115,6 @@ st.markdown("""
         min-height: 44px !important;
     }
 
-    /* 다운로드 버튼 스타일링 */
     div[data-testid="stDownloadButton"] button {
         border-radius: 8px !important;
         font-family: 'GmarketSans', sans-serif !important;
@@ -174,37 +173,34 @@ PASTEL_COLOR_SEQUENCE = ['#74B9FF', '#A29BFE', '#FFEAA7', '#81ECEC', '#FAB1A0', 
 PASTEL_BLUE_PURPLE = ['#D6E4FF', '#ADC6FF', '#85A5FF', '#9254DE', '#F759AB']
 PASTEL_MINT_PURPLE = ['#E6F7FF', '#BAE7FF', '#91D5FF', '#B37FEB', '#9254DE']
 
-# 3. 엑셀 변환 헬퍼 함수
 def convert_df_to_excel(df_to_export):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_to_export.to_excel(writer, index=False, sheet_name='데이터')
     return output.getvalue()
 
-# 4. 데이터 로딩 및 안전한 전처리
+# 3. 데이터 로딩 및 전처리
 @st.cache_data
 def get_clean_data():
     df = pd.read_parquet('merged_data.parquet')
 
-    # 1) 날짜 처리
     date_col = next((c for c in ['최종거래일시', '입금일시', '거래일시', '입금일자', '거래일자'] if c in df.columns), None)
     if date_col:
         dt = pd.to_datetime(df[date_col], errors='coerce')
         dt_valid = dt.dropna()
-        def_date = dt_valid.iloc[0] if len(dt_valid) > 0 else pd.Timestamp('2026-01-01')
+        def_date = dt_valid.iloc[0] if len(dt_valid) > 0 else pd.Timestamp('2026-06-01')
         dt = dt.fillna(def_date)
         
         df['입금일자_dt'] = dt.dt.date
-        df['입금연월'] = dt.dt.strftime('%Y-%m')
+        df['입금연월'] = dt.dt.strftime('%Y년 %m월')
         
         day_names = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
         df['요일'] = dt.dt.dayofweek.map(lambda x: day_names[int(x)] if pd.notnull(x) else '월요일')
     else:
-        df['입금일자_dt'] = datetime.date(2026, 1, 1)
-        df['입금연월'] = '2026-01'
+        df['입금일자_dt'] = datetime.date(2026, 6, 1)
+        df['입금연월'] = '2026년 06월'
         df['요일'] = '월요일'
 
-    # 2) 은행명 치환
     if '입금은행' in df.columns:
         bank_map = {
             '006': '006(국민은행(구 한국주택은행))', '030': '030(수협중앙회)',
@@ -215,7 +211,6 @@ def get_clean_data():
     else:
         df['입금은행'] = '미분류'
 
-    # 3) 상태구분 생성
     status_col = next((c for c in ['업체상태', '상태구분', '상태', '영업상태'] if c in df.columns), None)
     if status_col:
         is_cancel = df[status_col].astype(str).str.contains('해지|폐업|중단', regex=True, na=False)
@@ -223,7 +218,6 @@ def get_clean_data():
     else:
         df['통합상태구분'] = '정상'
 
-    # 4) 금액 및 세부구분
     if '입금금액' in df.columns:
         df['입금금액'] = pd.to_numeric(df['입금금액'], errors='coerce').fillna(0).astype('int64')
     else:
@@ -249,12 +243,12 @@ except Exception as e:
     st.error(f"데이터 파일 읽기 오류: {e}")
     st.stop()
 
-# 5. 대시보드 헤더
+# 4. 대시보드 헤더
 st.markdown('<div class="dashboard-header">💳 QR플레이트 사업자계좌 입금거래 통합 대시보드</div>', unsafe_allow_html=True)
 st.markdown('<div class="dashboard-subtitle">실시간 검색, 월별/요일별 다차원 통계 및 상세 거래 데이터 분석 리포트</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 6. 사이드바 검색 및 필터
+# 5. 사이드바 검색 및 필터
 # ---------------------------------------------------------
 st.sidebar.markdown("### 🔍 검색 & 핵심 필터")
 st.sidebar.markdown("---")
@@ -318,7 +312,7 @@ if selected_category:
     filtered_df = filtered_df[filtered_df['업종구분'].isin(selected_category)]
 
 # ---------------------------------------------------------
-# 7. 상단 주요 지표 (KPI) 카드 영역
+# 6. 상단 주요 지표 (KPI) 카드 영역
 # ---------------------------------------------------------
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
@@ -339,7 +333,7 @@ with kpi4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 8. 다차원 시각화 차트 섹션 (탭별 엑셀 다운로드 지원)
+# 7. 다차원 시각화 차트 섹션
 # ---------------------------------------------------------
 st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
 tab_month, tab_day, tab_bank, tab_sido, tab_cat = st.tabs(["📅 월별 입금 추이", "📆 요일별 거래 비중", "🏛️ 입금은행 점유율", "🗺️ 지역별 거래 현황", "🏢 업종별 분포"])
@@ -361,7 +355,15 @@ def get_korean_axis_ticks(max_val):
     texts = ["0" if v == 0 else (f"{v//10000}만" if v >= 10000 else f"{v:,}") for v in vals]
     return vals, texts
 
-# Tab 1: 월별 입금 추이
+def get_korean_amount_ticks(max_val):
+    if max_val <= 0: return [0], ["0원"]
+    step = max(100000000, int(max_val // 4))
+    step = int(math.ceil(step / 100000000.0) * 100000000)
+    vals = list(range(0, int(max_val) + step, step))
+    texts = ["0원" if v == 0 else f"{v//100000000}억원" for v in vals]
+    return vals, texts
+
+# Tab 1: 월별 입금 추이 (카테고리 축 고정 및 한글 단위 억/만 적용)
 with tab_month:
     if total_tx > 0:
         m_df = filtered_df.groupby('입금연월').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('입금연월')
@@ -378,11 +380,51 @@ with tab_month:
             )
 
         fig_m = make_subplots(specs=[[{"secondary_y": True}]])
-        fig_m.add_trace(go.Bar(x=m_df['입금연월'], y=m_df['거래건수'], name="거래건수 (건)", marker_color='#85A5FF', text=m_df['거래건수'], texttemplate='%{text:,.0f}', textposition='outside'), secondary_y=False)
-        fig_m.add_trace(go.Scatter(x=m_df['입금연월'], y=m_df['총입금액'], name="총 입금액 (원)", mode='lines+markers+text', line=dict(color='#FA8C16', width=3), marker=dict(size=8), text=[f"{v//100000000}억 {abs(v)%100000000//10000}만" if v >= 100000000 else f"{v//10000}만원" for v in m_df['총입금액']], textposition='top center'), secondary_y=True)
+        
+        # 거래건수 막대
+        fig_m.add_trace(
+            go.Bar(
+                x=m_df['입금연월'].astype(str), 
+                y=m_df['거래건수'], 
+                name="거래건수 (건)", 
+                marker_color='#85A5FF', 
+                text=m_df['거래건수'], 
+                texttemplate='%{text:,.0f}건', 
+                textposition='outside',
+                width=0.45
+            ), 
+            secondary_y=False
+        )
+        
+        # 총입금액 꺾은선
+        fig_m.add_trace(
+            go.Scatter(
+                x=m_df['입금연월'].astype(str), 
+                y=m_df['총입금액'], 
+                name="총 입금액 (원)", 
+                mode='lines+markers+text', 
+                line=dict(color='#FA8C16', width=3), 
+                marker=dict(size=9, symbol='circle'), 
+                text=[f"{v//100000000}억 {abs(v)%100000000//10000}만" if v >= 100000000 else f"{v//10000}만원" for v in m_df['총입금액']], 
+                textposition='top center'
+            ), 
+            secondary_y=True
+        )
+
         max_tx_v = m_df['거래건수'].max() if not m_df.empty else 100000
-        t_vals_m, t_texts_m = get_korean_axis_ticks(max_tx_v * 1.15)
-        fig_m.update_layout(title="<b>월별 거래건수 및 총 입금액 추이</b>", yaxis=dict(title="거래건수", tickmode='array', tickvals=t_vals_m, ticktext=t_texts_m), yaxis2=dict(title="총 입금액", showgrid=False), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), height=420)
+        t_vals_m, t_texts_m = get_korean_axis_ticks(max_tx_v * 1.2)
+
+        max_amt_v = m_df['총입금액'].max() if not m_df.empty else 1000000000
+        a_vals_m, a_texts_m = get_korean_amount_ticks(max_amt_v * 1.25)
+
+        fig_m.update_layout(
+            title="<b>월별 거래건수 및 총 입금액 추이</b>", 
+            xaxis=dict(type='category', title=""),
+            yaxis=dict(title="거래건수", tickmode='array', tickvals=t_vals_m, ticktext=t_texts_m), 
+            yaxis2=dict(title="총 입금액", tickmode='array', tickvals=a_vals_m, ticktext=a_texts_m, showgrid=False), 
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), 
+            height=430
+        )
         st.plotly_chart(apply_chart_theme(fig_m), use_container_width=True)
     else:
         st.info("조회된 데이터가 없습니다.")
@@ -410,7 +452,7 @@ with tab_day:
             fig_d.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
             max_d_v = d_df['거래건수'].max()
             t_vals_d, t_texts_d = get_korean_axis_ticks(max_d_v * 1.15)
-            fig_d.update_layout(yaxis=dict(tickmode='array', tickvals=t_vals_d, ticktext=t_texts_d), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_d, ticktext=t_texts_d), height=400)
+            fig_d.update_layout(xaxis=dict(type='category'), yaxis=dict(tickmode='array', tickvals=t_vals_d, ticktext=t_texts_d), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_d, ticktext=t_texts_d), height=400)
             st.plotly_chart(apply_chart_theme(fig_d), use_container_width=True)
         with col_d2:
             fig_dp = px.pie(d_df, names='요일', values='거래건수', title="<b>요일별 거래건수 점유 비중</b>", hole=0.48, color_discrete_sequence=PASTEL_COLOR_SEQUENCE)
@@ -476,7 +518,7 @@ with tab_sido:
         fig_s.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
         max_s_v = s_df['거래건수'].max()
         t_vals_s, t_texts_s = get_korean_axis_ticks(max_s_v * 1.1)
-        fig_s.update_layout(yaxis=dict(tickmode='array', tickvals=t_vals_s, ticktext=t_texts_s), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_s, ticktext=t_texts_s), height=400)
+        fig_s.update_layout(xaxis=dict(type='category'), yaxis=dict(tickmode='array', tickvals=t_vals_s, ticktext=t_texts_s), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_s, ticktext=t_texts_s), height=400)
         st.plotly_chart(apply_chart_theme(fig_s), use_container_width=True)
     else:
         st.info("조회된 데이터가 없습니다.")
@@ -501,7 +543,7 @@ with tab_cat:
         fig_c.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
         max_c_v = c_df['거래건수'].max()
         t_vals_c, t_texts_c = get_korean_axis_ticks(max_c_v * 1.1)
-        fig_c.update_layout(yaxis=dict(tickmode='array', tickvals=t_vals_c, ticktext=t_texts_c), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_c, ticktext=t_texts_c), height=400)
+        fig_c.update_layout(xaxis=dict(type='category'), yaxis=dict(tickmode='array', tickvals=t_vals_c, ticktext=t_texts_c), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_c, ticktext=t_texts_c), height=400)
         st.plotly_chart(apply_chart_theme(fig_c), use_container_width=True)
     else:
         st.info("조회된 데이터가 없습니다.")
@@ -509,7 +551,7 @@ with tab_cat:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 9. 상세 거래 내역 데이터 테이블 (필터링된 전체 결과 다운로드 지원)
+# 8. 상세 거래 내역 데이터 테이블 (필터링된 전체 결과 다운로드 지원)
 # ---------------------------------------------------------
 display_cols = ['최종거래일시', '판매점ID', '상호', '대표자', '명의자명', '통합상태구분', '시도', '도로명주소', '업종구분', '입금은행', '입금자', '입금금액', '세부입금구분']
 valid_cols = [c for c in display_cols if c in filtered_df.columns]
@@ -520,7 +562,6 @@ with col_tbl_head1:
 
 with col_tbl_head2:
     if total_tx > 0:
-        # 대용량 전체 다운로드 시 속도가 빠르고 엑셀에서 바로 열리는 UTF-8-SIG CSV로 지원
         csv_data = filtered_df[valid_cols].to_csv(index=False).encode('utf-8-sig')
         st.download_button(
             label="📥 필터링된 전체 내역 다운로드 (CSV)",
