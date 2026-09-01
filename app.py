@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import math
 import datetime
+import io
 
 # 1. 페이지 설정
 st.set_page_config(
@@ -114,6 +115,23 @@ st.markdown("""
         min-height: 44px !important;
     }
 
+    /* 다운로드 버튼 스타일링 */
+    div[data-testid="stDownloadButton"] button {
+        border-radius: 8px !important;
+        font-family: 'GmarketSans', sans-serif !important;
+        font-size: 0.85rem !important;
+        padding: 4px 12px !important;
+        border: 1px solid #cbd5e1 !important;
+        background-color: #ffffff !important;
+        color: #334155 !important;
+        transition: all 0.2s;
+    }
+    div[data-testid="stDownloadButton"] button:hover {
+        background-color: #f8fafc !important;
+        border-color: #94a3b8 !important;
+        color: #0f172a !important;
+    }
+
     div[data-testid="stHorizontalBlock"] button[kind="secondary"],
     div[data-testid="stHorizontalBlock"] button[kind="primary"] {
         min-width: 36px !important;
@@ -156,7 +174,14 @@ PASTEL_COLOR_SEQUENCE = ['#74B9FF', '#A29BFE', '#FFEAA7', '#81ECEC', '#FAB1A0', 
 PASTEL_BLUE_PURPLE = ['#D6E4FF', '#ADC6FF', '#85A5FF', '#9254DE', '#F759AB']
 PASTEL_MINT_PURPLE = ['#E6F7FF', '#BAE7FF', '#91D5FF', '#B37FEB', '#9254DE']
 
-# 3. 데이터 로딩 및 안전한 전처리
+# 3. 엑셀 변환 헬퍼 함수
+def convert_df_to_excel(df_to_export):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_to_export.to_excel(writer, index=False, sheet_name='데이터')
+    return output.getvalue()
+
+# 4. 데이터 로딩 및 안전한 전처리
 @st.cache_data
 def get_clean_data():
     df = pd.read_parquet('merged_data.parquet')
@@ -165,7 +190,6 @@ def get_clean_data():
     date_col = next((c for c in ['최종거래일시', '입금일시', '거래일시', '입금일자', '거래일자'] if c in df.columns), None)
     if date_col:
         dt = pd.to_datetime(df[date_col], errors='coerce')
-        # 결측 날짜 기본값 대체
         dt_valid = dt.dropna()
         def_date = dt_valid.iloc[0] if len(dt_valid) > 0 else pd.Timestamp('2026-01-01')
         dt = dt.fillna(def_date)
@@ -225,12 +249,12 @@ except Exception as e:
     st.error(f"데이터 파일 읽기 오류: {e}")
     st.stop()
 
-# 4. 대시보드 헤더
+# 5. 대시보드 헤더
 st.markdown('<div class="dashboard-header">💳 QR플레이트 사업자계좌 입금거래 통합 대시보드</div>', unsafe_allow_html=True)
 st.markdown('<div class="dashboard-subtitle">실시간 검색, 월별/요일별 다차원 통계 및 상세 거래 데이터 분석 리포트</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 5. 사이드바 검색 및 필터
+# 6. 사이드바 검색 및 필터
 # ---------------------------------------------------------
 st.sidebar.markdown("### 🔍 검색 & 핵심 필터")
 st.sidebar.markdown("---")
@@ -267,7 +291,7 @@ selected_banks = st.sidebar.multiselect("🏛️ 입금은행", options=bank_opt
 selected_sido = st.sidebar.multiselect("🗺️ 지역(시/도)", options=sido_options, placeholder="선택하세요")
 selected_category = st.sidebar.multiselect("🏢 업종구분", options=category_options, placeholder="선택하세요")
 
-# --- 안전 필터링 실행 ---
+# --- 필터링 실행 ---
 filtered_df = df.copy()
 
 if selected_status != '전체':
@@ -294,7 +318,7 @@ if selected_category:
     filtered_df = filtered_df[filtered_df['업종구분'].isin(selected_category)]
 
 # ---------------------------------------------------------
-# 6. 상단 주요 지표 (KPI) 카드 영역
+# 7. 상단 주요 지표 (KPI) 카드 영역
 # ---------------------------------------------------------
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
@@ -315,7 +339,7 @@ with kpi4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 7. 다차원 시각화 차트 섹션
+# 8. 다차원 시각화 차트 섹션 (탭별 엑셀 다운로드 지원)
 # ---------------------------------------------------------
 st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
 tab_month, tab_day, tab_bank, tab_sido, tab_cat = st.tabs(["📅 월별 입금 추이", "📆 요일별 거래 비중", "🏛️ 입금은행 점유율", "🗺️ 지역별 거래 현황", "🏢 업종별 분포"])
@@ -337,9 +361,22 @@ def get_korean_axis_ticks(max_val):
     texts = ["0" if v == 0 else (f"{v//10000}만" if v >= 10000 else f"{v:,}") for v in vals]
     return vals, texts
 
+# Tab 1: 월별 입금 추이
 with tab_month:
     if total_tx > 0:
         m_df = filtered_df.groupby('입금연월').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('입금연월')
+        
+        col_m_head1, col_m_head2 = st.columns([4, 1])
+        with col_m_head2:
+            excel_m = convert_df_to_excel(m_df)
+            st.download_button(
+                label="📥 월별 집계 엑셀 다운로드",
+                data=excel_m,
+                file_name="월별_입금거래_집계.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="down_btn_month"
+            )
+
         fig_m = make_subplots(specs=[[{"secondary_y": True}]])
         fig_m.add_trace(go.Bar(x=m_df['입금연월'], y=m_df['거래건수'], name="거래건수 (건)", marker_color='#85A5FF', text=m_df['거래건수'], texttemplate='%{text:,.0f}', textposition='outside'), secondary_y=False)
         fig_m.add_trace(go.Scatter(x=m_df['입금연월'], y=m_df['총입금액'], name="총 입금액 (원)", mode='lines+markers+text', line=dict(color='#FA8C16', width=3), marker=dict(size=8), text=[f"{v//100000000}억 {abs(v)%100000000//10000}만" if v >= 100000000 else f"{v//10000}만원" for v in m_df['총입금액']], textposition='top center'), secondary_y=True)
@@ -350,11 +387,24 @@ with tab_month:
     else:
         st.info("조회된 데이터가 없습니다.")
 
+# Tab 2: 요일별 거래 비중
 with tab_day:
     if total_tx > 0:
-        col_d1, col_d2 = st.columns([1.1, 0.9])
         day_order = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
-        d_df = filtered_df.groupby('요일').agg(거래건수=('입금금액', 'count')).reindex(day_order).fillna(0).reset_index()
+        d_df = filtered_df.groupby('요일').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reindex(day_order).fillna(0).reset_index()
+        
+        col_d_head1, col_d_head2 = st.columns([4, 1])
+        with col_d_head2:
+            excel_d = convert_df_to_excel(d_df)
+            st.download_button(
+                label="📥 요일별 집계 엑셀 다운로드",
+                data=excel_d,
+                file_name="요일별_입금거래_집계.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="down_btn_day"
+            )
+
+        col_d1, col_d2 = st.columns([1.1, 0.9])
         with col_d1:
             fig_d = px.bar(d_df, x='요일', y='거래건수', title="<b>요일별 거래건수 분포 (일~토)</b>", color='거래건수', color_continuous_scale=PASTEL_BLUE_PURPLE, text='거래건수')
             fig_d.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
@@ -370,15 +420,28 @@ with tab_day:
     else:
         st.info("조회된 데이터가 없습니다.")
 
+# Tab 3: 입금은행 점유율
 with tab_bank:
     if total_tx > 0 and '입금은행' in filtered_df.columns:
+        b_df = filtered_df.groupby('입금은행').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('거래건수', ascending=False)
+        
+        col_ctrl1, col_ctrl2 = st.columns([3, 1])
+        with col_ctrl1:
+            view_mode = st.radio("조회 범위", ["TOP 10 입금은행", "전체 입금은행"], horizontal=True, label_visibility="collapsed")
+        with col_ctrl2:
+            excel_b = convert_df_to_excel(b_df)
+            st.download_button(
+                label="📥 은행별 집계 엑셀 다운로드",
+                data=excel_b,
+                file_name="입금은행별_거래집계.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="down_btn_bank"
+            )
+
+        disp_b = b_df.head(10) if view_mode == "TOP 10 입금은행" else b_df
         col_c1, col_c2 = st.columns([1.2, 0.8])
-        b_df = filtered_df['입금은행'].value_counts().reset_index()
-        b_df.columns = ['입금은행', '거래건수']
         with col_c1:
-            view_mode = st.radio("조회 범위", ["전체 입금은행", "TOP 10 입금은행"], horizontal=True, label_visibility="collapsed")
-            disp_b = b_df.head(10) if view_mode == "TOP 10 입금은행" else b_df
-            fig_b = px.bar(disp_b, x='거래건수', y='입금은행', orientation='h', title="<b>입금은행별 거래건수</b>", color='거래건수', color_continuous_scale=PASTEL_BLUE_PURPLE, text='거래건수')
+            fig_b = px.bar(disp_b, x='거래건수', y='입금은행', orientation='h', title=f"<b>{view_mode}별 거래건수</b>", color='거래건수', color_continuous_scale=PASTEL_BLUE_PURPLE, text='거래건수')
             fig_b.update_traces(texttemplate='%{text:,.0f}', textposition='inside', insidetextanchor='middle')
             max_b_v = disp_b['거래건수'].max() if not disp_b.empty else 100000
             t_vals_b, t_texts_b = get_korean_axis_ticks(max_b_v)
@@ -392,10 +455,23 @@ with tab_bank:
     else:
         st.info("조회된 데이터가 없습니다.")
 
+# Tab 4: 지역별 거래 현황
 with tab_sido:
     if total_tx > 0 and '시도' in filtered_df.columns:
-        s_df = filtered_df['시도'].value_counts().reset_index()
-        s_df.columns = ['지역(시/도)', '거래건수']
+        s_df = filtered_df.groupby('시도').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('거래건수', ascending=False)
+        s_df.columns = ['지역(시/도)', '거래건수', '총입금액']
+        
+        col_s_head1, col_s_head2 = st.columns([4, 1])
+        with col_s_head2:
+            excel_s = convert_df_to_excel(s_df)
+            st.download_button(
+                label="📥 지역별 집계 엑셀 다운로드",
+                data=excel_s,
+                file_name="지역별_입금거래_집계.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="down_btn_sido"
+            )
+
         fig_s = px.bar(s_df, x='지역(시/도)', y='거래건수', title="<b>전국 시/도별 거래 분포</b>", color='거래건수', color_continuous_scale=PASTEL_BLUE_PURPLE, text='거래건수')
         fig_s.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
         max_s_v = s_df['거래건수'].max()
@@ -405,10 +481,22 @@ with tab_sido:
     else:
         st.info("조회된 데이터가 없습니다.")
 
+# Tab 5: 업종별 분포
 with tab_cat:
     if total_tx > 0 and '업종구분' in filtered_df.columns:
-        c_df = filtered_df['업종구분'].value_counts().reset_index()
-        c_df.columns = ['업종구분', '거래건수']
+        c_df = filtered_df.groupby('업종구분').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('거래건수', ascending=False)
+        
+        col_c_head1, col_c_head2 = st.columns([4, 1])
+        with col_c_head2:
+            excel_c = convert_df_to_excel(c_df)
+            st.download_button(
+                label="📥 업종별 집계 엑셀 다운로드",
+                data=excel_c,
+                file_name="업종별_입금거래_집계.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="down_btn_cat"
+            )
+
         fig_c = px.bar(c_df.head(10), x='업종구분', y='거래건수', title="<b>TOP 10 업종 분포</b>", color='거래건수', color_continuous_scale=PASTEL_MINT_PURPLE, text='거래건수')
         fig_c.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
         max_c_v = c_df['거래건수'].max()
@@ -421,12 +509,26 @@ with tab_cat:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 8. 상세 거래 내역 데이터 테이블 (페이징)
+# 9. 상세 거래 내역 데이터 테이블 (필터링된 전체 결과 다운로드 지원)
 # ---------------------------------------------------------
-st.markdown(f"<h3 style='font-size:1.25rem;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#64748b; font-weight:500;'>(조회 결과: {total_tx:,} 건)</span></h3>", unsafe_allow_html=True)
-
 display_cols = ['최종거래일시', '판매점ID', '상호', '대표자', '명의자명', '통합상태구분', '시도', '도로명주소', '업종구분', '입금은행', '입금자', '입금금액', '세부입금구분']
 valid_cols = [c for c in display_cols if c in filtered_df.columns]
+
+col_tbl_head1, col_tbl_head2 = st.columns([3, 1.2])
+with col_tbl_head1:
+    st.markdown(f"<h3 style='font-size:1.25rem; margin-top:6px;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#64748b; font-weight:500;'>(조회 결과: {total_tx:,} 건)</span></h3>", unsafe_allow_html=True)
+
+with col_tbl_head2:
+    if total_tx > 0:
+        # 대용량 전체 다운로드 시 속도가 빠르고 엑셀에서 바로 열리는 UTF-8-SIG CSV로 지원
+        csv_data = filtered_df[valid_cols].to_csv(index=False).encode('utf-8-sig')
+        st.download_button(
+            label="📥 필터링된 전체 내역 다운로드 (CSV)",
+            data=csv_data,
+            file_name=f"상세거래내역_{datetime.date.today().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            key="down_btn_table"
+        )
 
 items_per_page = 10
 total_pages = math.ceil(total_tx / items_per_page) if total_tx > 0 else 1
