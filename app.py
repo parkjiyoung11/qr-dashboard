@@ -16,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. Custom CSS
+# 2. 토스(Toss) 스타일 프리미엄 UI CSS
 st.markdown("""
 <style>
     @font-face {
@@ -32,112 +32,139 @@ st.markdown("""
         font-style: normal;
     }
 
-    body, p, label, select, .stMarkdown p {
-        font-family: 'GmarketSans', -apple-system, sans-serif !important;
-        font-weight: 500;
-        color: #1e293b;
+    /* 전역 폰트 및 배경 */
+    html, body, [class*="css"], .stMarkdown p, label, select {
+        font-family: 'GmarketSans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        color: #191F28;
     }
 
-    .main { background-color: #f8fafc; }
-    
-    .dashboard-header {
-        font-family: 'GmarketSans', sans-serif !important;
-        font-size: 2.1rem;
+    .main {
+        background-color: #F2F4F6;
+    }
+
+    /* 토스 스타일 메인 헤더 */
+    .toss-header {
+        font-size: 2.2rem;
         font-weight: 700 !important;
-        color: #0f172a;
+        color: #191F28;
         margin-bottom: 4px;
-        letter-spacing: -0.5px;
+        letter-spacing: -0.6px;
     }
 
-    .dashboard-subtitle {
-        font-family: 'GmarketSans', sans-serif !important;
-        color: #64748b;
+    .toss-subtitle {
+        color: #8B95A1;
+        font-size: 1.0rem;
+        font-weight: 500;
+        margin-bottom: 20px;
+    }
+
+    /* 토스 스타일 부드러운 카드 & 호버 리프트 */
+    .toss-card {
+        background-color: #FFFFFF;
+        border-radius: 20px;
+        padding: 22px 20px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(0, 0, 0, 0.02);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .toss-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .toss-card-title {
         font-size: 0.95rem;
         font-weight: 500;
-        margin-bottom: 18px;
+        color: #6B7684;
+        margin-bottom: 8px;
     }
 
-    .section-bold-title {
-        font-family: 'GmarketSans', sans-serif !important;
-        font-weight: 700 !important;
-        color: #0f172a;
-    }
-
-    button[data-baseweb="tab"] div {
-        font-family: 'GmarketSans', sans-serif !important;
-        font-weight: 500 !important;
-        font-size: 1.02rem !important;
-    }
-
-    .metric-card {
-        background-color: #ffffff;
-        border-radius: 14px;
-        padding: 18px 16px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        border: 1px solid #e2e8f0;
-        text-align: left;
-    }
-    .metric-title {
-        font-family: 'GmarketSans', sans-serif !important;
-        font-size: 0.92rem !important;
-        font-weight: 500 !important;
-        color: #475569;
-        margin-bottom: 6px;
-    }
-    .metric-value {
-        font-family: 'GmarketSans', sans-serif !important;
-        font-size: 1.7rem;
-        font-weight: 700 !important;
-        color: #0f172a;
+    .toss-card-value {
+        font-size: 1.85rem;
+        font-weight: 700;
+        color: #191F28;
         letter-spacing: -0.5px;
     }
-    .metric-unit {
-        font-size: 0.92rem;
-        font-weight: 500 !important;
-        color: #64748b;
+
+    .toss-card-unit {
+        font-size: 1.05rem;
+        font-weight: 500;
+        color: #8B95A1;
         margin-left: 2px;
     }
 
-    .streamlit-expanderHeader {
-        background-color: #ffffff !important;
-        border-radius: 10px !important;
-        border: 1px solid #e2e8f0 !important;
+    /* 인사이트 브리핑 바 */
+    .toss-insight-box {
+        background: linear-gradient(135deg, #E8F3FF 0%, #F4F7FF 100%);
+        border-radius: 16px;
+        padding: 16px 20px;
+        border: 1px solid #D0E4FF;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
 
-    hr { border-top: 1px solid #e2e8f0; margin: 18px 0; }
+    /* 선택된 필터 뱃지(Tag) */
+    .active-filter-badge {
+        background-color: #E8F3FF;
+        color: #1B64DA;
+        font-weight: 700;
+        padding: 6px 14px;
+        border-radius: 100px;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #B8D7FF;
+        margin-bottom: 12px;
+    }
 
+    /* 탭 디자인 */
+    button[data-baseweb="tab"] {
+        font-family: 'GmarketSans', sans-serif !important;
+        font-weight: 700 !important;
+        font-size: 1.0rem !important;
+        color: #6B7684 !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #3182F6 !important;
+    }
+
+    /* 파일 업로더 */
     [data-testid="stFileUploader"] section > div:first-child { display: none !important; }
     [data-testid="stFileUploader"] section {
-        padding: 12px 14px !important;
-        background-color: #f1f5f9 !important;
-        border: 1px dashed #cbd5e1 !important;
-        border-radius: 8px !important;
-        min-height: 44px !important;
+        padding: 14px 16px !important;
+        background-color: #FFFFFF !important;
+        border: 1px dashed #D1D6DB !important;
+        border-radius: 14px !important;
     }
 
+    /* 토스 스타일 버튼 */
     div[data-testid="stDownloadButton"] button {
-        border-radius: 8px !important;
+        border-radius: 12px !important;
         font-family: 'GmarketSans', sans-serif !important;
-        font-size: 0.85rem !important;
-        padding: 4px 12px !important;
-        border: 1px solid #cbd5e1 !important;
-        background-color: #ffffff !important;
-        color: #334155 !important;
+        font-weight: 700 !important;
+        font-size: 0.88rem !important;
+        padding: 6px 16px !important;
+        border: none !important;
+        background-color: #E8F3FF !important;
+        color: #1B64DA !important;
         transition: all 0.2s;
     }
     div[data-testid="stDownloadButton"] button:hover {
-        background-color: #f8fafc !important;
-        border-color: #94a3b8 !important;
-        color: #0f172a !important;
+        background-color: #D0E4FF !important;
+        color: #0E49B5 !important;
     }
 
+    /* 원형/캡슐 페이지네이션 */
     div[data-testid="stHorizontalBlock"] button[kind="secondary"],
     div[data-testid="stHorizontalBlock"] button[kind="primary"] {
-        min-width: 36px !important;
+        min-width: 38px !important;
         width: auto !important;
-        height: 36px !important;
-        min-height: 36px !important;
-        border-radius: 18px !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        border-radius: 19px !important;
         padding: 0 10px !important;
         display: inline-flex !important;
         align-items: center !important;
@@ -146,32 +173,32 @@ st.markdown("""
         font-size: 0.88rem !important;
         white-space: nowrap !important;
         word-break: keep-all !important;
-        border: 1px solid #e2e8f0 !important;
-        background-color: #ffffff !important;
-        color: #334155 !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+        border: 1px solid #E5E8EB !important;
+        background-color: #FFFFFF !important;
+        color: #4E5968 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
         margin: 0 auto !important;
     }
 
     div[data-testid="stHorizontalBlock"] button[kind="secondary"]:hover {
-        background-color: #f1f5f9 !important;
-        border-color: #cbd5e1 !important;
-        color: #0f172a !important;
+        background-color: #F2F4F6 !important;
+        color: #191F28 !important;
     }
 
     div[data-testid="stHorizontalBlock"] button[kind="primary"] {
-        background-color: #1e293b !important;
-        color: #ffffff !important;
-        border-color: #1e293b !important;
+        background-color: #3182F6 !important;
+        color: #FFFFFF !important;
+        border-color: #3182F6 !important;
         font-weight: 700 !important;
-        box-shadow: 0 2px 6px rgba(30, 41, 59, 0.25) !important;
+        box-shadow: 0 4px 10px rgba(49, 130, 246, 0.3) !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-PASTEL_COLOR_SEQUENCE = ['#74B9FF', '#A29BFE', '#FFEAA7', '#81ECEC', '#FAB1A0', '#55E6C1', '#70A1FF', '#81D4FA', '#A8E6CF', '#D6A2E8']
-PASTEL_BLUE_PURPLE = ['#D6E4FF', '#ADC6FF', '#85A5FF', '#9254DE', '#F759AB']
-PASTEL_MINT_PURPLE = ['#E6F7FF', '#BAE7FF', '#91D5FF', '#B37FEB', '#9254DE']
+# 토스 테마 컬러 팔레트
+TOSS_BLUE = '#3182F6'
+TOSS_GRADIENT_BLUES = ['#E8F3FF', '#B8D7FF', '#74ABFF', '#3182F6', '#1B64DA']
+TOSS_PASTEL_SEQUENCE = ['#3182F6', '#20C997', '#FFB300', '#F06595', '#845EF7', '#339AF0', '#51CF66', '#FCC419', '#FF922B']
 
 def convert_df_to_excel(df_to_export):
     output = io.BytesIO()
@@ -188,7 +215,7 @@ def get_clean_data():
     if date_col:
         dt = pd.to_datetime(df[date_col], errors='coerce')
         dt_valid = dt.dropna()
-        def_date = dt_valid.iloc[0] if len(dt_valid) > 0 else pd.Timestamp('2026-06-01')
+        def_date = dt_valid.iloc[0] if len(dt_valid) > 0 else pd.Timestamp.now()
         dt = dt.fillna(def_date)
         
         df['입금일자_dt'] = dt.dt.date
@@ -197,8 +224,9 @@ def get_clean_data():
         day_names = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
         df['요일'] = dt.dt.dayofweek.map(lambda x: day_names[int(x)] if pd.notnull(x) else '월요일')
     else:
-        df['입금일자_dt'] = datetime.date(2026, 6, 1)
-        df['입금연월'] = '2026년 06월'
+        now_d = datetime.date.today()
+        df['입금일자_dt'] = now_d
+        df['입금연월'] = now_d.strftime('%Y년 %m월')
         df['요일'] = '월요일'
 
     if '입금은행' in df.columns:
@@ -243,18 +271,21 @@ except Exception as e:
     st.error(f"데이터 파일 읽기 오류: {e}")
     st.stop()
 
-# 4. 대시보드 헤더
-st.markdown('<div class="dashboard-header">💳 QR플레이트 사업자계좌 입금거래 통합 대시보드</div>', unsafe_allow_html=True)
-st.markdown('<div class="dashboard-subtitle">실시간 검색, 월별/요일별 다차원 통계 및 상세 거래 데이터 분석 리포트</div>', unsafe_allow_html=True)
+# 4. 차트 클릭(Drill-down) 필터 세션 관리
+if 'chart_filter' not in st.session_state:
+    st.session_state.chart_filter = None  # {'col': '입금연월', 'val': '2026년 06월'}
+
+# 5. 헤더 영역
+st.markdown('<div class="toss-header">💳 QR플레이트 입금거래 통합 리포트</div>', unsafe_allow_html=True)
+st.markdown('<div class="toss-subtitle">원클릭 차트 필터링 및 실시간 정산 통계를 한눈에 확인하세요.</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 5. 사이드바 검색 및 필터
+# 6. 사이드바 검색 및 필터
 # ---------------------------------------------------------
-st.sidebar.markdown("### 🔍 검색 & 핵심 필터")
+st.sidebar.markdown("### 🔍 검색 & 기본 필터")
 st.sidebar.markdown("---")
 
 search_store_id = st.sidebar.text_input("🎯 판매점 ID / 상호 검색", value="", placeholder="판매점ID 또는 상호 입력...")
-
 status_options = ['전체', '정상', '해지']
 selected_status = st.sidebar.selectbox("🏷️ 판매점 상태구분", options=status_options, index=0)
 
@@ -285,65 +316,106 @@ selected_banks = st.sidebar.multiselect("🏛️ 입금은행", options=bank_opt
 selected_sido = st.sidebar.multiselect("🗺️ 지역(시/도)", options=sido_options, placeholder="선택하세요")
 selected_category = st.sidebar.multiselect("🏢 업종구분", options=category_options, placeholder="선택하세요")
 
-# --- 필터링 실행 ---
-filtered_df = df.copy()
+# --- 기본 필터링 실행 ---
+base_filtered_df = df.copy()
 
 if selected_status != '전체':
-    filtered_df = filtered_df[filtered_df['통합상태구분'] == selected_status]
+    base_filtered_df = base_filtered_df[base_filtered_df['통합상태구분'] == selected_status]
 
 if period_mode == "일자별 선택" and date_range and isinstance(date_range, (list, tuple)) and len(date_range) == 2:
-    filtered_df = filtered_df[(filtered_df['입금일자_dt'] >= date_range[0]) & (filtered_df['입금일자_dt'] <= date_range[1])]
+    base_filtered_df = base_filtered_df[(base_filtered_df['입금일자_dt'] >= date_range[0]) & (base_filtered_df['입금일자_dt'] <= date_range[1])]
 elif period_mode == "월별(연월) 선택" and selected_months:
-    filtered_df = filtered_df[filtered_df['입금연월'].isin(selected_months)]
+    base_filtered_df = base_filtered_df[base_filtered_df['입금연월'].isin(selected_months)]
 
 if search_store_id.strip():
     q = search_store_id.strip()
-    id_cond = filtered_df['판매점ID'].astype(str).str.contains(q, na=False) if '판매점ID' in filtered_df.columns else False
-    name_cond = filtered_df['상호'].astype(str).str.contains(q, na=False) if '상호' in filtered_df.columns else False
-    filtered_df = filtered_df[id_cond | name_cond]
+    id_cond = base_filtered_df['판매점ID'].astype(str).str.contains(q, na=False) if '판매점ID' in base_filtered_df.columns else False
+    name_cond = base_filtered_df['상호'].astype(str).str.contains(q, na=False) if '상호' in base_filtered_df.columns else False
+    base_filtered_df = base_filtered_df[id_cond | name_cond]
 
 if selected_deposit_details:
-    filtered_df = filtered_df[filtered_df['세부입금구분'].isin(selected_deposit_details)]
+    base_filtered_df = base_filtered_df[base_filtered_df['세부입금구분'].isin(selected_deposit_details)]
 if selected_banks:
-    filtered_df = filtered_df[filtered_df['입금은행'].isin(selected_banks)]
+    base_filtered_df = base_filtered_df[base_filtered_df['입금은행'].isin(selected_banks)]
 if selected_sido:
-    filtered_df = filtered_df[filtered_df['시도'].isin(selected_sido)]
+    base_filtered_df = base_filtered_df[base_filtered_df['시도'].isin(selected_sido)]
 if selected_category:
-    filtered_df = filtered_df[filtered_df['업종구분'].isin(selected_category)]
+    base_filtered_df = base_filtered_df[base_filtered_df['업종구분'].isin(selected_category)]
 
 # ---------------------------------------------------------
-# 6. 상단 주요 지표 (KPI) 카드 영역
+# 7. 상단 토스형 KPI 카드 영역
 # ---------------------------------------------------------
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
-total_tx = len(filtered_df)
-total_amount = int(filtered_df['입금금액'].sum()) if total_tx > 0 else 0
+total_tx = len(base_filtered_df)
+total_amount = int(base_filtered_df['입금금액'].sum()) if total_tx > 0 else 0
 avg_amount = int(total_amount / total_tx) if total_tx > 0 else 0
-unique_stores = filtered_df['판매점ID'].nunique() if '판매점ID' in filtered_df.columns and total_tx > 0 else 0
+unique_stores = base_filtered_df['판매점ID'].nunique() if '판매점ID' in base_filtered_df.columns and total_tx > 0 else 0
 
 with kpi1:
-    st.markdown(f'<div class="metric-card"><div class="metric-title">📊 총 거래 건수</div><div class="metric-value">{total_tx:,}<span class="metric-unit"> 건</span></div></div>', unsafe_allow_html=True)
+    st.markdown(f'''
+        <div class="toss-card">
+            <div class="toss-card-title">총 거래 건수</div>
+            <div class="toss-card-value">{total_tx:,}<span class="toss-card-unit"> 건</span></div>
+        </div>
+    ''', unsafe_allow_html=True)
+
 with kpi2:
-    st.markdown(f'<div class="metric-card"><div class="metric-title">💰 총 입금 금액</div><div class="metric-value" style="color:#2563eb;">{total_amount:,}<span class="metric-unit"> 원</span></div></div>', unsafe_allow_html=True)
+    st.markdown(f'''
+        <div class="toss-card">
+            <div class="toss-card-title">총 입금 금액</div>
+            <div class="toss-card-value" style="color:#3182F6;">{total_amount:,}<span class="toss-card-unit"> 원</span></div>
+        </div>
+    ''', unsafe_allow_html=True)
+
 with kpi3:
-    st.markdown(f'<div class="metric-card"><div class="metric-title">📈 건당 평균 입금액</div><div class="metric-value" style="color:#059669;">{avg_amount:,}<span class="metric-unit"> 원</span></div></div>', unsafe_allow_html=True)
+    st.markdown(f'''
+        <div class="toss-card">
+            <div class="toss-card-title">건당 평균 입금액</div>
+            <div class="toss-card-value" style="color:#20C997;">{avg_amount:,}<span class="toss-card-unit"> 원</span></div>
+        </div>
+    ''', unsafe_allow_html=True)
+
 with kpi4:
-    st.markdown(f'<div class="metric-card"><div class="metric-title">🏪 조회 판매점 수</div><div class="metric-value" style="color:#d97706;">{unique_stores:,}<span class="metric-unit"> 개소</span></div></div>', unsafe_allow_html=True)
+    st.markdown(f'''
+        <div class="toss-card">
+            <div class="toss-card-title">조회 판매점 수</div>
+            <div class="toss-card-value" style="color:#FFB300;">{unique_stores:,}<span class="toss-card-unit"> 곳</span></div>
+        </div>
+    ''', unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 7. 다차원 시각화 차트 섹션
+# 8. 토스 스타일 스마트 브리핑 (생동감 있는 데이터 요약)
 # ---------------------------------------------------------
-st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
+if total_tx > 0:
+    top_bank_val = base_filtered_df['입금은행'].value_counts().index[0] if '입금은행' in base_filtered_df.columns else '-'
+    top_day_val = base_filtered_df['요일'].value_counts().index[0] if '요일' in base_filtered_df.columns else '-'
+    st.markdown(f"""
+        <div class="toss-insight-box">
+            <span style="font-size:1.3rem;">💡</span>
+            <span style="font-size:0.95rem; color:#1B64DA; line-height:1.4;">
+                현재 필터 조건에서 가장 많은 입금이 발생한 요일은 <b>{top_day_val}</b>이며, 점유율 1위 은행은 <b>{top_bank_val}</b>입니다.
+                <br><span style="font-size:0.85rem; color:#6B7684;">👉 아래 차트의 특정 막대를 클릭하면 해당 데이터만 아래 상세 목록에 즉시 필터링됩니다.</span>
+            </span>
+        </div>
+    """, unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# 9. 다차원 시각화 차트 섹션 (토스 디자인 + 인터랙티브 선택)
+# ---------------------------------------------------------
+st.markdown("<h2 class='section-bold-title' style='font-size: 1.45rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
 tab_month, tab_day, tab_bank, tab_sido, tab_cat = st.tabs(["📅 월별 입금 추이", "📆 요일별 거래 비중", "🏛️ 입금은행 점유율", "🗺️ 지역별 거래 현황", "🏢 업종별 분포"])
 
-def apply_chart_theme(fig):
+def apply_toss_theme(fig):
     fig.update_layout(
-        plot_bgcolor="white", paper_bgcolor="white",
-        font=dict(family="GmarketSans, sans-serif", size=12, color="#334155"),
-        title_font=dict(family="GmarketSans, sans-serif", size=15, color="#0f172a"),
-        margin=dict(l=20, r=20, t=40, b=20)
+        plot_bgcolor="#FFFFFF", 
+        paper_bgcolor="#FFFFFF",
+        font=dict(family="GmarketSans, sans-serif", size=12, color="#4E5968"),
+        title_font=dict(family="GmarketSans, sans-serif", size=15, color="#191F28"),
+        margin=dict(l=20, r=20, t=45, b=20),
+        hoverlabel=dict(bgcolor="#191F28", font_size=12, font_family="GmarketSans", font_color="#FFFFFF")
     )
     return fig
 
@@ -363,16 +435,16 @@ def get_korean_amount_ticks(max_val):
     texts = ["0원" if v == 0 else f"{v//100000000}억원" for v in vals]
     return vals, texts
 
-# Tab 1: 월별 입금 추이 (카테고리 축 고정 및 한글 단위 억/만 적용)
+# Tab 1: 월별 입금 추이
 with tab_month:
     if total_tx > 0:
-        m_df = filtered_df.groupby('입금연월').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('입금연월')
+        m_df = base_filtered_df.groupby('입금연월').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('입금연월')
         
         col_m_head1, col_m_head2 = st.columns([4, 1])
         with col_m_head2:
             excel_m = convert_df_to_excel(m_df)
             st.download_button(
-                label="📥 월별 집계 엑셀 다운로드",
+                label="📥 월별 집계 엑셀",
                 data=excel_m,
                 file_name="월별_입금거래_집계.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -380,14 +452,12 @@ with tab_month:
             )
 
         fig_m = make_subplots(specs=[[{"secondary_y": True}]])
-        
-        # 거래건수 막대
         fig_m.add_trace(
             go.Bar(
                 x=m_df['입금연월'].astype(str), 
                 y=m_df['거래건수'], 
                 name="거래건수 (건)", 
-                marker_color='#85A5FF', 
+                marker=dict(color='#74ABFF', line=dict(color='#3182F6', width=1.5)),
                 text=m_df['거래건수'], 
                 texttemplate='%{text:,.0f}건', 
                 textposition='outside',
@@ -395,16 +465,14 @@ with tab_month:
             ), 
             secondary_y=False
         )
-        
-        # 총입금액 꺾은선
         fig_m.add_trace(
             go.Scatter(
                 x=m_df['입금연월'].astype(str), 
                 y=m_df['총입금액'], 
                 name="총 입금액 (원)", 
                 mode='lines+markers+text', 
-                line=dict(color='#FA8C16', width=3), 
-                marker=dict(size=9, symbol='circle'), 
+                line=dict(color='#FF922B', width=3.5), 
+                marker=dict(size=10, color='#FF922B', line=dict(color='#FFFFFF', width=2)), 
                 text=[f"{v//100000000}억 {abs(v)%100000000//10000}만" if v >= 100000000 else f"{v//10000}만원" for v in m_df['총입금액']], 
                 textposition='top center'
             ), 
@@ -412,20 +480,31 @@ with tab_month:
         )
 
         max_tx_v = m_df['거래건수'].max() if not m_df.empty else 100000
-        t_vals_m, t_texts_m = get_korean_axis_ticks(max_tx_v * 1.2)
-
+        t_vals_m, t_texts_m = get_korean_axis_ticks(max_tx_v * 1.25)
         max_amt_v = m_df['총입금액'].max() if not m_df.empty else 1000000000
-        a_vals_m, a_texts_m = get_korean_amount_ticks(max_amt_v * 1.25)
+        a_vals_m, a_texts_m = get_korean_amount_ticks(max_amt_v * 1.3)
 
         fig_m.update_layout(
-            title="<b>월별 거래건수 및 총 입금액 추이</b>", 
+            title="<b>월별 거래건수 및 총 입금액 추이</b> (막대 클릭 시 해당 월 상세 필터링)", 
             xaxis=dict(type='category', title=""),
-            yaxis=dict(title="거래건수", tickmode='array', tickvals=t_vals_m, ticktext=t_texts_m), 
+            yaxis=dict(title="거래건수", tickmode='array', tickvals=t_vals_m, ticktext=t_texts_m, gridcolor="#F2F4F6"), 
             yaxis2=dict(title="총 입금액", tickmode='array', tickvals=a_vals_m, ticktext=a_texts_m, showgrid=False), 
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), 
             height=430
         )
-        st.plotly_chart(apply_chart_theme(fig_m), use_container_width=True)
+        
+        # Plotly 선택 이벤트 활성화
+        selected_m_points = st.plotly_chart(
+            apply_toss_theme(fig_m), 
+            use_container_width=True, 
+            on_select="rerun", 
+            selection_mode="points",
+            key="chart_select_month"
+        )
+        
+        if selected_m_points and selected_m_points.get("selection") and selected_m_points["selection"]["points"]:
+            pt = selected_m_points["selection"]["points"][0]
+            st.session_state.chart_filter = {'col': '입금연월', 'val': pt['x']}
     else:
         st.info("조회된 데이터가 없습니다.")
 
@@ -433,13 +512,13 @@ with tab_month:
 with tab_day:
     if total_tx > 0:
         day_order = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
-        d_df = filtered_df.groupby('요일').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reindex(day_order).fillna(0).reset_index()
+        d_df = base_filtered_df.groupby('요일').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reindex(day_order).fillna(0).reset_index()
         
         col_d_head1, col_d_head2 = st.columns([4, 1])
         with col_d_head2:
             excel_d = convert_df_to_excel(d_df)
             st.download_button(
-                label="📥 요일별 집계 엑셀 다운로드",
+                label="📥 요일별 집계 엑셀",
                 data=excel_d,
                 file_name="요일별_입금거래_집계.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -448,24 +527,35 @@ with tab_day:
 
         col_d1, col_d2 = st.columns([1.1, 0.9])
         with col_d1:
-            fig_d = px.bar(d_df, x='요일', y='거래건수', title="<b>요일별 거래건수 분포 (일~토)</b>", color='거래건수', color_continuous_scale=PASTEL_BLUE_PURPLE, text='거래건수')
-            fig_d.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
+            fig_d = px.bar(d_df, x='요일', y='거래건수', title="<b>요일별 거래건수 분포</b> (클릭 시 해당 요일 필터링)", color='거래건수', color_continuous_scale=TOSS_GRADIENT_BLUES, text='거래건수')
+            fig_d.update_traces(texttemplate='%{text:,.0f}건', textposition='outside')
             max_d_v = d_df['거래건수'].max()
-            t_vals_d, t_texts_d = get_korean_axis_ticks(max_d_v * 1.15)
-            fig_d.update_layout(xaxis=dict(type='category'), yaxis=dict(tickmode='array', tickvals=t_vals_d, ticktext=t_texts_d), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_d, ticktext=t_texts_d), height=400)
-            st.plotly_chart(apply_chart_theme(fig_d), use_container_width=True)
+            t_vals_d, t_texts_d = get_korean_axis_ticks(max_d_v * 1.2)
+            fig_d.update_layout(xaxis=dict(type='category'), yaxis=dict(tickmode='array', tickvals=t_vals_d, ticktext=t_texts_d, gridcolor="#F2F4F6"), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_d, ticktext=t_texts_d), height=400)
+            
+            selected_d_points = st.plotly_chart(
+                apply_toss_theme(fig_d), 
+                use_container_width=True,
+                on_select="rerun",
+                selection_mode="points",
+                key="chart_select_day"
+            )
+            if selected_d_points and selected_d_points.get("selection") and selected_d_points["selection"]["points"]:
+                pt = selected_d_points["selection"]["points"][0]
+                st.session_state.chart_filter = {'col': '요일', 'val': pt['x']}
+
         with col_d2:
-            fig_dp = px.pie(d_df, names='요일', values='거래건수', title="<b>요일별 거래건수 점유 비중</b>", hole=0.48, color_discrete_sequence=PASTEL_COLOR_SEQUENCE)
-            fig_dp.update_traces(textinfo='percent+label', texttemplate='%{label}<br>%{percent:.1%}')
+            fig_dp = px.pie(d_df, names='요일', values='거래건수', title="<b>요일별 점유 비중</b>", hole=0.55, color_discrete_sequence=TOSS_PASTEL_SEQUENCE)
+            fig_dp.update_traces(textinfo='percent+label', texttemplate='%{label}<br>%{percent:.1%}', hovertemplate="<b>%{label}</b><br>거래건수: %{value:,.0f}건<br>비중: %{percent:.1%}")
             fig_dp.update_layout(height=400)
-            st.plotly_chart(apply_chart_theme(fig_dp), use_container_width=True)
+            st.plotly_chart(apply_toss_theme(fig_dp), use_container_width=True)
     else:
         st.info("조회된 데이터가 없습니다.")
 
 # Tab 3: 입금은행 점유율
 with tab_bank:
-    if total_tx > 0 and '입금은행' in filtered_df.columns:
-        b_df = filtered_df.groupby('입금은행').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('거래건수', ascending=False)
+    if total_tx > 0 and '입금은행' in base_filtered_df.columns:
+        b_df = base_filtered_df.groupby('입금은행').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('거래건수', ascending=False)
         
         col_ctrl1, col_ctrl2 = st.columns([3, 1])
         with col_ctrl1:
@@ -473,7 +563,7 @@ with tab_bank:
         with col_ctrl2:
             excel_b = convert_df_to_excel(b_df)
             st.download_button(
-                label="📥 은행별 집계 엑셀 다운로드",
+                label="📥 은행별 집계 엑셀",
                 data=excel_b,
                 file_name="입금은행별_거래집계.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -483,88 +573,142 @@ with tab_bank:
         disp_b = b_df.head(10) if view_mode == "TOP 10 입금은행" else b_df
         col_c1, col_c2 = st.columns([1.2, 0.8])
         with col_c1:
-            fig_b = px.bar(disp_b, x='거래건수', y='입금은행', orientation='h', title=f"<b>{view_mode}별 거래건수</b>", color='거래건수', color_continuous_scale=PASTEL_BLUE_PURPLE, text='거래건수')
-            fig_b.update_traces(texttemplate='%{text:,.0f}', textposition='inside', insidetextanchor='middle')
+            fig_b = px.bar(disp_b, x='거래건수', y='입금은행', orientation='h', title=f"<b>{view_mode}별 거래건수</b> (클릭 시 해당 은행 필터링)", color='거래건수', color_continuous_scale=TOSS_GRADIENT_BLUES, text='거래건수')
+            fig_b.update_traces(texttemplate='%{text:,.0f}건', textposition='inside', insidetextanchor='middle')
             max_b_v = disp_b['거래건수'].max() if not disp_b.empty else 100000
             t_vals_b, t_texts_b = get_korean_axis_ticks(max_b_v)
-            fig_b.update_layout(yaxis={'categoryorder': 'total ascending'}, xaxis=dict(tickmode='array', tickvals=t_vals_b, ticktext=t_texts_b), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_b, ticktext=t_texts_b), height=max(400, len(disp_b)*30))
-            st.plotly_chart(apply_chart_theme(fig_b), use_container_width=True)
+            fig_b.update_layout(yaxis={'categoryorder': 'total ascending'}, xaxis=dict(tickmode='array', tickvals=t_vals_b, ticktext=t_texts_b, gridcolor="#F2F4F6"), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_b, ticktext=t_texts_b), height=max(400, len(disp_b)*32))
+            
+            selected_b_points = st.plotly_chart(
+                apply_toss_theme(fig_b), 
+                use_container_width=True,
+                on_select="rerun",
+                selection_mode="points",
+                key="chart_select_bank"
+            )
+            if selected_b_points and selected_b_points.get("selection") and selected_b_points["selection"]["points"]:
+                pt = selected_b_points["selection"]["points"][0]
+                st.session_state.chart_filter = {'col': '입금은행', 'val': pt['y']}
+
         with col_c2:
-            fig_bp = px.pie(b_df.head(8), names='입금은행', values='거래건수', title="<b>주요 은행별 비중 (TOP 8)</b>", hole=0.48, color_discrete_sequence=PASTEL_COLOR_SEQUENCE)
-            fig_bp.update_traces(textinfo='percent', texttemplate='%{percent:.1%}')
+            fig_bp = px.pie(b_df.head(8), names='입금은행', values='거래건수', title="<b>주요 은행 점유 비중 (TOP 8)</b>", hole=0.55, color_discrete_sequence=TOSS_PASTEL_SEQUENCE)
+            fig_bp.update_traces(textinfo='percent', texttemplate='%{percent:.1%}', hovertemplate="<b>%{label}</b><br>거래건수: %{value:,.0f}건<br>비중: %{percent:.1%}")
             fig_bp.update_layout(height=400)
-            st.plotly_chart(apply_chart_theme(fig_bp), use_container_width=True)
+            st.plotly_chart(apply_toss_theme(fig_bp), use_container_width=True)
     else:
         st.info("조회된 데이터가 없습니다.")
 
 # Tab 4: 지역별 거래 현황
 with tab_sido:
-    if total_tx > 0 and '시도' in filtered_df.columns:
-        s_df = filtered_df.groupby('시도').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('거래건수', ascending=False)
+    if total_tx > 0 and '시도' in base_filtered_df.columns:
+        s_df = base_filtered_df.groupby('시도').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('거래건수', ascending=False)
         s_df.columns = ['지역(시/도)', '거래건수', '총입금액']
         
         col_s_head1, col_s_head2 = st.columns([4, 1])
         with col_s_head2:
             excel_s = convert_df_to_excel(s_df)
             st.download_button(
-                label="📥 지역별 집계 엑셀 다운로드",
+                label="📥 지역별 집계 엑셀",
                 data=excel_s,
                 file_name="지역별_입금거래_집계.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key="down_btn_sido"
             )
 
-        fig_s = px.bar(s_df, x='지역(시/도)', y='거래건수', title="<b>전국 시/도별 거래 분포</b>", color='거래건수', color_continuous_scale=PASTEL_BLUE_PURPLE, text='거래건수')
-        fig_s.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
+        fig_s = px.bar(s_df, x='지역(시/도)', y='거래건수', title="<b>전국 시/도별 거래 분포</b> (클릭 시 해당 지역 필터링)", color='거래건수', color_continuous_scale=TOSS_GRADIENT_BLUES, text='거래건수')
+        fig_s.update_traces(texttemplate='%{text:,.0f}건', textposition='outside')
         max_s_v = s_df['거래건수'].max()
-        t_vals_s, t_texts_s = get_korean_axis_ticks(max_s_v * 1.1)
-        fig_s.update_layout(xaxis=dict(type='category'), yaxis=dict(tickmode='array', tickvals=t_vals_s, ticktext=t_texts_s), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_s, ticktext=t_texts_s), height=400)
-        st.plotly_chart(apply_chart_theme(fig_s), use_container_width=True)
+        t_vals_s, t_texts_s = get_korean_axis_ticks(max_s_v * 1.2)
+        fig_s.update_layout(xaxis=dict(type='category'), yaxis=dict(tickmode='array', tickvals=t_vals_s, ticktext=t_texts_s, gridcolor="#F2F4F6"), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_s, ticktext=t_texts_s), height=400)
+        
+        selected_s_points = st.plotly_chart(
+            apply_toss_theme(fig_s), 
+            use_container_width=True,
+            on_select="rerun",
+            selection_mode="points",
+            key="chart_select_sido"
+        )
+        if selected_s_points and selected_s_points.get("selection") and selected_s_points["selection"]["points"]:
+            pt = selected_s_points["selection"]["points"][0]
+            st.session_state.chart_filter = {'col': '시도', 'val': pt['x']}
     else:
         st.info("조회된 데이터가 없습니다.")
 
 # Tab 5: 업종별 분포
 with tab_cat:
-    if total_tx > 0 and '업종구분' in filtered_df.columns:
-        c_df = filtered_df.groupby('업종구분').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('거래건수', ascending=False)
+    if total_tx > 0 and '업종구분' in base_filtered_df.columns:
+        c_df = base_filtered_df.groupby('업종구분').agg(거래건수=('입금금액', 'count'), 총입금액=('입금금액', 'sum')).reset_index().sort_values('거래건수', ascending=False)
         
         col_c_head1, col_c_head2 = st.columns([4, 1])
         with col_c_head2:
             excel_c = convert_df_to_excel(c_df)
             st.download_button(
-                label="📥 업종별 집계 엑셀 다운로드",
+                label="📥 업종별 집계 엑셀",
                 data=excel_c,
                 file_name="업종별_입금거래_집계.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key="down_btn_cat"
             )
 
-        fig_c = px.bar(c_df.head(10), x='업종구분', y='거래건수', title="<b>TOP 10 업종 분포</b>", color='거래건수', color_continuous_scale=PASTEL_MINT_PURPLE, text='거래건수')
-        fig_c.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
+        fig_c = px.bar(c_df.head(10), x='업종구분', y='거래건수', title="<b>TOP 10 업종 분포</b> (클릭 시 해당 업종 필터링)", color='거래건수', color_continuous_scale=TOSS_GRADIENT_BLUES, text='거래건수')
+        fig_c.update_traces(texttemplate='%{text:,.0f}건', textposition='outside')
         max_c_v = c_df['거래건수'].max()
-        t_vals_c, t_texts_c = get_korean_axis_ticks(max_c_v * 1.1)
-        fig_c.update_layout(xaxis=dict(type='category'), yaxis=dict(tickmode='array', tickvals=t_vals_c, ticktext=t_texts_c), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_c, ticktext=t_texts_c), height=400)
-        st.plotly_chart(apply_chart_theme(fig_c), use_container_width=True)
+        t_vals_c, t_texts_c = get_korean_axis_ticks(max_c_v * 1.2)
+        fig_c.update_layout(xaxis=dict(type='category'), yaxis=dict(tickmode='array', tickvals=t_vals_c, ticktext=t_texts_c, gridcolor="#F2F4F6"), coloraxis_colorbar=dict(title="거래건수", tickmode='array', tickvals=t_vals_c, ticktext=t_texts_c), height=400)
+        
+        selected_c_points = st.plotly_chart(
+            apply_toss_theme(fig_c), 
+            use_container_width=True,
+            on_select="rerun",
+            selection_mode="points",
+            key="chart_select_cat"
+        )
+        if selected_c_points and selected_c_points.get("selection") and selected_c_points["selection"]["points"]:
+            pt = selected_c_points["selection"]["points"][0]
+            st.session_state.chart_filter = {'col': '업종구분', 'val': pt['x']}
     else:
         st.info("조회된 데이터가 없습니다.")
 
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 8. 상세 거래 내역 데이터 테이블 (필터링된 전체 결과 다운로드 지원)
+# 10. 상세 거래 내역 데이터 테이블 (차트 클릭 드릴다운 적용)
 # ---------------------------------------------------------
+table_filtered_df = base_filtered_df.copy()
+
+# 차트 클릭 인터랙션 필터 적용
+if st.session_state.chart_filter:
+    f_col = st.session_state.chart_filter['col']
+    f_val = st.session_state.chart_filter['val']
+    if f_col in table_filtered_df.columns:
+        table_filtered_df = table_filtered_df[table_filtered_df[f_col] == f_val]
+
+table_tx_count = len(table_filtered_df)
+
 display_cols = ['최종거래일시', '판매점ID', '상호', '대표자', '명의자명', '통합상태구분', '시도', '도로명주소', '업종구분', '입금은행', '입금자', '입금금액', '세부입금구분']
-valid_cols = [c for c in display_cols if c in filtered_df.columns]
+valid_cols = [c for c in display_cols if c in table_filtered_df.columns]
 
 col_tbl_head1, col_tbl_head2 = st.columns([3, 1.2])
 with col_tbl_head1:
-    st.markdown(f"<h3 style='font-size:1.25rem; margin-top:6px;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#64748b; font-weight:500;'>(조회 결과: {total_tx:,} 건)</span></h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='font-size:1.25rem; margin-top:6px;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#8B95A1; font-weight:500;'>(조회 결과: {table_tx_count:,} 건)</span></h3>", unsafe_allow_html=True)
+    
+    # 클릭된 필터가 있을 경우 필터 태그 및 초기화 버튼 표시
+    if st.session_state.chart_filter:
+        c_name = st.session_state.chart_filter['col']
+        c_val = st.session_state.chart_filter['val']
+        col_tag, col_reset = st.columns([3, 1])
+        with col_tag:
+            st.markdown(f'<div class="active-filter-badge">🔍 차트 선택 필터: <b>{c_val}</b> ({c_name})</div>', unsafe_allow_html=True)
+        with col_reset:
+            if st.button("✕ 필터 초기화", key="reset_chart_filter"):
+                st.session_state.chart_filter = None
+                st.rerun()
 
 with col_tbl_head2:
-    if total_tx > 0:
-        csv_data = filtered_df[valid_cols].to_csv(index=False).encode('utf-8-sig')
+    if table_tx_count > 0:
+        csv_data = table_filtered_df[valid_cols].to_csv(index=False).encode('utf-8-sig')
         st.download_button(
-            label="📥 필터링된 전체 내역 다운로드 (CSV)",
+            label="📥 필터 내역 CSV 다운로드",
             data=csv_data,
             file_name=f"상세거래내역_{datetime.date.today().strftime('%Y%m%d')}.csv",
             mime="text/csv",
@@ -572,7 +716,7 @@ with col_tbl_head2:
         )
 
 items_per_page = 10
-total_pages = math.ceil(total_tx / items_per_page) if total_tx > 0 else 1
+total_pages = math.ceil(table_tx_count / items_per_page) if table_tx_count > 0 else 1
 
 if 'curr_page' not in st.session_state:
     st.session_state.curr_page = 1
@@ -584,7 +728,7 @@ if st.session_state.curr_page < 1:
 start_idx = (st.session_state.curr_page - 1) * items_per_page
 end_idx = start_idx + items_per_page
 
-st.dataframe(filtered_df[valid_cols].iloc[start_idx:end_idx], use_container_width=True, height=390)
+st.dataframe(table_filtered_df[valid_cols].iloc[start_idx:end_idx], use_container_width=True, height=390)
 
 # 페이지네이션
 page_block_size = 10
@@ -613,4 +757,4 @@ with btn_cols[len(page_range) + 2]:
         st.session_state.curr_page = total_pages
         st.rerun()
 
-st.markdown(f"<p style='text-align: center; color: #64748b; font-size: 0.9rem; margin-top: 14px; font-family: GmarketSans;'>페이지 <b>{st.session_state.curr_page:,}</b> / {total_pages:,} (총 {total_tx:,} 건)</p>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center; color: #8B95A1; font-size: 0.9rem; margin-top: 14px; font-family: GmarketSans;'>페이지 <b>{st.session_state.curr_page:,}</b> / {total_pages:,} (총 {table_tx_count:,} 건)</p>", unsafe_allow_html=True)
