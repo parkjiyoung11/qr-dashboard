@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. Custom CSS (Gmarket Sans 폰트, 파일업로드 겹침 방지, 완벽 중앙 원형 페이지네이션)
+# 2. 100% 표준 호환 Custom CSS (아이콘 겹침 방지 + 원형 페이지네이션)
 st.markdown("""
 <style>
     @font-face {
@@ -27,15 +27,17 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* 본문 텍스트에만 안전하게 GmarketSans 적용 (아이콘 충돌 방지) */
-    body, p, label, select, .stMarkdown p, div[data-testid="stMarkdownContainer"] p {
+    /* 본문 폰트 적용 */
+    body, p, label, select, .stMarkdown p {
         font-family: 'GmarketSans', -apple-system, sans-serif !important;
         font-weight: 500;
         color: #1e293b;
     }
 
-    /* Streamlit 내부 아이콘/화살표 클래스(.arrow_right 등) 폰트 덮어쓰기 완전 방지 */
-    i, svg, [class*="st-icon"], [data-testid="stExpanderToggleIcon"], .material-icons, span[class*="icon"] {
+    /* Streamlit 내부 아이콘/화살표 클래스(.arrow_right 등) 완전 보호 */
+    [data-testid="stExpander"] summary svg, 
+    [data-testid="stExpander"] summary span,
+    i, svg {
         font-family: inherit !important;
     }
 
@@ -43,26 +45,27 @@ st.markdown("""
         background-color: #f8fafc;
     }
     
-    /* 대제목 */
-    .dashboard-header, h1, h2, .section-bold-title {
+    .dashboard-header {
+        font-family: 'GmarketSans', sans-serif !important;
+        font-size: 2.2rem;
+        font-weight: 700 !important;
+        color: #0f172a;
+        margin-bottom: 6px;
+        letter-spacing: -0.5px;
+    }
+
+    .dashboard-subtitle {
+        font-family: 'GmarketSans', sans-serif !important;
+        color: #64748b;
+        font-size: 1.0rem;
+        font-weight: 500;
+        margin-bottom: 22px;
+    }
+
+    .section-bold-title {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 700 !important;
         color: #0f172a;
-        letter-spacing: -0.5px;
-    }
-    .dashboard-header {
-        font-size: 2.2rem;
-        margin-bottom: 6px;
-    }
-
-    .dashboard-subtitle, h3, h4, h5, .stSidebar h3 {
-        font-family: 'GmarketSans', sans-serif !important;
-        font-weight: 500 !important;
-    }
-    .dashboard-subtitle {
-        color: #64748b;
-        font-size: 1.0rem;
-        margin-bottom: 22px;
     }
 
     button[data-baseweb="tab"] div {
@@ -71,7 +74,7 @@ st.markdown("""
         font-size: 1.05rem !important;
     }
 
-    /* KPI Metric Cards */
+    /* KPI 카드 */
     .metric-card {
         background-color: #ffffff;
         border-radius: 14px;
@@ -112,62 +115,40 @@ st.markdown("""
         margin: 22px 0;
     }
 
-    /* --------------------------------------------------
-       페이지네이션 전용 세련된 원형 UI & 중앙 정렬 CSS
-    -------------------------------------------------- */
-    div[data-testid="stHorizontalBlock"]:has(button[key^="p_btn_"]) {
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        gap: 6px !important;
-        margin-top: 15px !important;
-        width: 100% !important;
-    }
-
-    div[data-testid="column"]:has(button[key^="p_btn_"]), 
-    div[data-testid="column"]:has(button[key="next_block"]), 
-    div[data-testid="column"]:has(button[key="last_page"]) {
-        flex: 0 0 auto !important;
-        width: auto !important;
-        min-width: unset !important;
-        padding: 0 !important;
-    }
-
-    /* 원형 버튼 공통 스타일 */
-    button[key^="p_btn_"], button[key="next_block"], button[key="last_page"] {
+    /* -------------------------------------------
+       세련된 동그란 원형 페이지네이션 버튼 CSS
+    ------------------------------------------- */
+    div[data-testid="stHorizontalBlock"] button {
+        border-radius: 50% !important;
         width: 36px !important;
         height: 36px !important;
-        border-radius: 50% !important;
         min-height: 36px !important;
         padding: 0 !important;
-        display: inline-flex !important;
+        display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         font-family: 'GmarketSans', sans-serif !important;
-        font-size: 0.92rem !important;
+        font-size: 0.95rem !important;
         font-weight: 500 !important;
         border: 1px solid #e2e8f0 !important;
         background-color: #ffffff !important;
         color: #334155 !important;
         box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
-        transition: all 0.2s ease !important;
+        margin: 0 auto !important;
     }
 
-    /* 마우스 호버 시 */
-    button[key^="p_btn_"]:hover, button[key="next_block"]:hover, button[key="last_page"]:hover {
+    div[data-testid="stHorizontalBlock"] button:hover {
         background-color: #f1f5f9 !important;
         border-color: #cbd5e1 !important;
         color: #0f172a !important;
-        transform: translateY(-1px);
     }
 
-    /* 활성화(선택된) 번호 - 세련된 딥 차콜 원형 */
-    button[key^="p_btn_"][data-testid="stBaseButton-primary"] {
+    div[data-testid="stHorizontalBlock"] button[data-testid="stBaseButton-primary"] {
         background-color: #1e293b !important;
         color: #ffffff !important;
         border-color: #1e293b !important;
         font-weight: 700 !important;
-        box-shadow: 0 3px 8px rgba(30, 41, 59, 0.28) !important;
+        box-shadow: 0 2px 6px rgba(30, 41, 59, 0.25) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -186,7 +167,7 @@ BANK_COLOR_MAP = {
     '기업은행': '#D6A2E8'
 }
 
-# 4. 데이터 로딩 및 날짜 변환 함수
+# 4. 데이터 로딩 함수
 @st.cache_data
 def load_default_data():
     df = pd.read_parquet('merged_data.parquet')
@@ -205,7 +186,7 @@ st.markdown('<div class="dashboard-header">💳 QR플레이트 사업자계좌 �
 st.markdown('<div class="dashboard-subtitle">실시간 검색, 금액별/일자별 필터링 및 시각화 분석 리포트</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 6. 엑셀 파일 업로드 창 (버튼/토글 클릭 시 확장)
+# 6. 엑셀 파일 업로드 창
 # ---------------------------------------------------------
 with st.expander("📂 신규 데이터 갱신 (엑셀/CSV 파일 업로드)", expanded=False):
     st.markdown("<p style='font-size:0.95rem; color:#475569;'>💡 새로운 데이터가 있는 경우 파일 2개를 업로드하여 대시보드를 갱신할 수 있습니다.</p>", unsafe_allow_html=True)
@@ -272,25 +253,24 @@ selected_banks = st.sidebar.multiselect("🏛️ 입금은행", options=bank_opt
 selected_sido = st.sidebar.multiselect("🗺️ 지역(시/도)", options=sido_options, placeholder="선택하세요")
 selected_category = st.sidebar.multiselect("🏢 업종구분", options=category_options, placeholder="선택하세요")
 
-# --- 필터링 캐싱 함수 ---
-@st.cache_data
-def filter_dataframe(data, search_id, d_range, d_type, banks, sidos, cats):
-    f_df = data.copy()
-    if d_range and isinstance(d_range, (list, tuple)) and len(d_range) == 2:
-        f_df = f_df[(f_df['입금일자'] >= d_range[0]) & (f_df['입금일자'] <= d_range[1])]
-    if search_id.strip() and '판매점ID' in f_df.columns:
-        f_df = f_df[f_df['판매점ID'].astype(str).str.contains(search_id.strip())]
-    if d_type and '입금구분' in f_df.columns:
-        f_df = f_df[f_df['입금구분'].isin(d_type)]
-    if banks and '입금은행' in f_df.columns:
-        f_df = f_df[f_df['입금은행'].isin(banks)]
-    if sidos and '시도' in f_df.columns:
-        f_df = f_df[f_df['시도'].isin(sidos)]
-    if cats and '업종구분' in f_df.columns:
-        f_df = f_df[f_df['업종구분'].isin(cats)]
-    return f_df
+# 필터링 로직
+filtered_df = df.copy()
 
-filtered_df = filter_dataframe(df, search_store_id, date_range, deposit_type, selected_banks, selected_sido, selected_category)
+if date_range and isinstance(date_range, (list, tuple)) and len(date_range) == 2:
+    filtered_df = filtered_df[(filtered_df['입금일자'] >= date_range[0]) & (filtered_df['입금일자'] <= date_range[1])]
+
+if search_store_id.strip() and '판매점ID' in filtered_df.columns:
+    filtered_df = filtered_df[filtered_df['판매점ID'].astype(str).str.contains(search_store_id.strip())]
+
+if deposit_type and '입금구분' in filtered_df.columns:
+    filtered_df = filtered_df[filtered_df['입금구분'].isin(deposit_type)]
+
+if selected_banks and '입금은행' in filtered_df.columns:
+    filtered_df = filtered_df[filtered_df['입금은행'].isin(selected_banks)]
+if selected_sido and '시도' in filtered_df.columns:
+    filtered_df = filtered_df[filtered_df['시도'].isin(selected_sido)]
+if selected_category and '업종구분' in filtered_df.columns:
+    filtered_df = filtered_df[filtered_df['업종구분'].isin(selected_category)]
 
 # ---------------------------------------------------------
 # 8. 상단 주요 지표 (KPI) 카드 영역
@@ -337,7 +317,7 @@ with kpi4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 9. 시각화 차트 섹션 (모든 k단위 -> '만' 한글 단위 통일)
+# 9. 시각화 차트 섹션 (모든 영문 k단위 -> 한글 '만'으로 통일)
 # ---------------------------------------------------------
 st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
 
@@ -353,21 +333,14 @@ def apply_chart_theme(fig):
     )
     return fig
 
-# 축 한글 눈금 생성 도우미 함수 (k표기 완전 방지)
-def create_korean_ticks(max_value):
-    if max_value <= 0:
+# 한글 눈금 생성 함수
+def get_korean_axis_ticks(max_val):
+    if max_val <= 0:
         return [0], ["0"]
-    step = max(10000, int(max_value // 5))
+    step = max(10000, int(max_val // 5))
     step = int(math.ceil(step / 10000.0) * 10000)
-    vals = list(range(0, int(max_value) + step, step))
-    texts = []
-    for v in vals:
-        if v == 0:
-            texts.append("0")
-        elif v >= 10000:
-            texts.append(f"{v//10000}만")
-        else:
-            texts.append(f"{v:,}")
+    vals = list(range(0, int(max_val) + step, step))
+    texts = ["0" if v == 0 else (f"{v//10000}만" if v >= 10000 else f"{v:,}") for v in vals]
     return vals, texts
 
 # Tab 1: 입금은행 점유율
@@ -401,7 +374,7 @@ with tab1:
             )
             
             max_v = top10_bank_df['거래건수'].max() if not top10_bank_df.empty else 100000
-            t_vals, t_texts = create_korean_ticks(max_v)
+            t_vals, t_texts = get_korean_axis_ticks(max_v)
             
             fig_bank_bar.update_layout(
                 yaxis={'categoryorder': 'total ascending'}, 
@@ -457,15 +430,14 @@ with tab2:
         )
         fig_sido.update_traces(texttemplate='%{text:,.0f}', textposition='outside', textfont=dict(family="GmarketSans"))
         
-        # y축 단위 한글화
-        max_sido_v = sido_df['거래건수'].max() if not sido_df.empty else 100000
-        t_vals_sido, t_texts_sido = create_korean_ticks(max_sido_v)
+        max_sido = sido_df['거래건수'].max() if not sido_df.empty else 100000
+        t_vals_s, t_texts_s = get_korean_axis_ticks(max_sido)
         
         fig_sido.update_layout(
             yaxis=dict(
                 tickmode='array',
-                tickvals=t_vals_sido,
-                ticktext=t_texts_sido
+                tickvals=t_vals_s,
+                ticktext=t_texts_s
             ),
             height=400
         )
@@ -490,15 +462,14 @@ with tab3:
         )
         fig_cat.update_traces(texttemplate='%{text:,.0f}', textposition='outside', textfont=dict(family="GmarketSans"))
         
-        # y축 단위 한글화
-        max_cat_v = cat_df['거래건수'].max() if not cat_df.empty else 100000
-        t_vals_cat, t_texts_cat = create_korean_ticks(max_cat_v)
+        max_cat = cat_df['거래건수'].max() if not cat_df.empty else 100000
+        t_vals_c, t_texts_c = get_korean_axis_ticks(max_cat)
         
         fig_cat.update_layout(
             yaxis=dict(
                 tickmode='array',
-                tickvals=t_vals_cat,
-                ticktext=t_texts_cat
+                tickvals=t_vals_c,
+                ticktext=t_texts_c
             ),
             height=400
         )
@@ -543,32 +514,37 @@ st.dataframe(
     height=390
 )
 
-# --- 10개 블록 원형 버튼 페이징 (1 2 3 4 5 6 7 8 9 10 › ») ---
+# --------------------------------------------------
+# 완벽 중앙 정렬 원형 버튼 페이징 (1 2 3 4 5 6 7 8 9 10 › »)
+# --------------------------------------------------
 page_block_size = 10
 start_p = ((st.session_state.curr_page - 1) // page_block_size) * page_block_size + 1
 end_p = min(total_pages, start_p + page_block_size - 1)
 
 page_range = list(range(start_p, end_p + 1))
+total_btns = len(page_range) + 2
 
-# 버튼 그리드 생성
-btn_cols = st.columns(len(page_range) + 2)
+# 완벽 중앙 정렬: 좌우 여백(flex spacers) + 중앙 버튼 컬럼
+side_spacer = max(1, (16 - total_btns) // 2)
+col_structure = [side_spacer] + [1] * total_btns + [side_spacer]
+btn_cols = st.columns(col_structure)
 
 # 1. 숫자 원형 버튼들 (1 ~ 10)
 for idx, p_num in enumerate(page_range):
-    with btn_cols[idx]:
+    with btn_cols[idx + 1]:
         b_type = "primary" if p_num == st.session_state.curr_page else "secondary"
         if st.button(f"{p_num}", key=f"p_btn_{p_num}", type=b_type):
             st.session_state.curr_page = p_num
             st.rerun()
 
 # 2. '›' 다음 10개 블록 이동
-with btn_cols[len(page_range)]:
+with btn_cols[len(page_range) + 1]:
     if st.button("›", key="next_block", disabled=(end_p >= total_pages)):
         st.session_state.curr_page = min(total_pages, end_p + 1)
         st.rerun()
 
 # 3. '»' 맨 끝 이동
-with btn_cols[len(page_range) + 1]:
+with btn_cols[len(page_range) + 2]:
     if st.button("»", key="last_page", disabled=(st.session_state.curr_page == total_pages or total_pages == 0)):
         st.session_state.curr_page = total_pages
         st.rerun()
