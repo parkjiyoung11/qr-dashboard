@@ -152,74 +152,73 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 3. 색상 팔레트 상수
+# 3. 색상 팔레트
 PASTEL_COLOR_SEQUENCE = ['#74B9FF', '#A29BFE', '#FFEAA7', '#81ECEC', '#FAB1A0', '#55E6C1', '#70A1FF', '#81D4FA', '#A8E6CF', '#D6A2E8']
 PASTEL_BLUE_PURPLE = ['#D6E4FF', '#ADC6FF', '#85A5FF', '#9254DE', '#F759AB']
 PASTEL_MINT_PURPLE = ['#E6F7FF', '#BAE7FF', '#91D5FF', '#B37FEB', '#9254DE']
 
-# 4. 초경량 메모리 로드 및 전처리
+# 4. 방어적 로드 및 초경량 전처리
 @st.cache_data(max_entries=1)
 def load_and_preprocess_data():
     df = pd.read_parquet('merged_data.parquet')
     
-    # 1) 입금일시 파싱 (문자열 슬라이싱으로 초고속/저메모리 처리)
+    # 1) 날짜/시간 파싱
     date_col = next((c for c in ['최종거래일시', '입금일시', '거래일시', '입금일자', '거래일자'] if c in df.columns), None)
     if date_col:
-        # datetime 파싱 대신 빠른 문자열 처리
-        s_date = df[date_col].astype(str)
-        df['입금일자_str'] = s_date.str.slice(0, 10)  # YYYY-MM-DD
-        df['입금연월'] = s_date.str.slice(0, 7).astype('category')  # YYYY-MM
+        dt_series = pd.to_datetime(df[date_col], errors='coerce')
+        valid_dates = dt_series.dropna()
+        default_d = valid_dates.iloc[0].date() if len(valid_dates) > 0 else pd.Timestamp.now().date()
         
-        # 요일 계산을 위해 최소한의 날짜 변환
-        dt_temp = pd.to_datetime(df['입금일자_str'], errors='coerce')
+        df['입금일자'] = dt_series.dt.date.fillna(default_d)
+        df['입금연월'] = dt_series.dt.strftime('%Y-%m').fillna(default_d.strftime('%Y-%m')).astype('category')
+        
         day_names = np.array(['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'])
-        day_indices = dt_temp.dt.dayofweek.fillna(0).astype(int)
-        df['요일'] = pd.Categorical(day_names[day_indices], categories=['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'], ordered=True)
-        del dt_temp
+        day_idx = dt_series.dt.dayofweek.fillna(0).astype(int).values
+        df['요일'] = pd.Categorical(day_names[day_idx], categories=['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'], ordered=True)
     else:
-        df['입금일자_str'] = '2026-01-01'
-        df['입금연월'] = pd.Categorical(['2026-01'] * len(df))
-        df['요일'] = pd.Categorical(['월요일'] * len(df))
+        now_d = pd.Timestamp.now().date()
+        df['입금일자'] = now_d
+        df['입금연월'] = pd.Categorical([now_d.strftime('%Y-%m')] * len(df))
+        df['요일'] = pd.Categorical(['월요일'] * len(df), categories=['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'], ordered=True)
 
-    # 2) 은행명 표준화 및 Category 변환
+    # 2) 은행명 표준화
     if '입금은행' in df.columns:
         bank_rename_map = {
             '006': '006(국민은행(구 한국주택은행))', '030': '030(수협중앙회)',
             6: '006(국민은행(구 한국주택은행))', 30: '030(수협중앙회)',
             '6': '006(국민은행(구 한국주택은행))', '30': '030(수협중앙회)'
         }
-        df['입금은행'] = df['입금은행'].replace(bank_rename_map).fillna('미분류').astype('category')
+        df['입금은행'] = df['입금은행'].replace(bank_rename_map).fillna('미분류').astype(str).astype('category')
 
-    # 3) 업체상태 -> 통합 상태구분 벡터 연산
+    # 3) 업체상태 -> 통합 상태구분
     status_col = next((c for c in ['업체상태', '상태구분', '상태', '영업상태'] if c in df.columns), None)
     if status_col:
         status_str = df[status_col].astype(str)
-        is_cancel = status_str.str.contains('해지|폐업|중단', regex=True)
-        df['통합상태구분'] = np.where(is_cancel, '해지', '정상')
-        df['통합상태구분'] = df['통합상태구분'].astype('category')
+        is_cancel = status_str.str.contains('해지|폐업|중단', regex=True).values
+        df['통합상태구분'] = pd.Categorical(np.where(is_cancel, '해지', '정상'))
     else:
         df['통합상태구분'] = pd.Categorical(['정상'] * len(df))
 
-    # 4) 세부 입금구분 벡터 연산
+    # 4) 세부 입금구분
     if '입금금액' in df.columns:
-        df['입금금액'] = pd.to_numeric(df['입금금액'], errors='coerce').fillna(0).astype('int32')
+        df['입금금액'] = pd.to_numeric(df['입금금액'], errors='coerce').fillna(0).astype('int64')
+    else:
+        df['입금금액'] = 0
         
     memo_series = ""
-    if '입금자' in df.columns:
-        memo_series += df['입금자'].astype(str) + " "
-    if '입금구분' in df.columns:
-        memo_series += df['입금구분'].astype(str)
+    if '입금자' in df.columns: memo_series += df['입금자'].astype(str) + " "
+    if '입금구분' in df.columns: memo_series += df['입금구분'].astype(str)
         
-    is_reward = memo_series.str.contains('보상|리워드|캐시|이벤트|환급|포인트', regex=True) if isinstance(memo_series, pd.Series) else False
-    is_thousand = (df['입금금액'] > 0) & (df['입금금액'] % 1000 == 0)
+    is_reward = memo_series.str.contains('보상|리워드|캐시|이벤트|환급|포인트', regex=True).values if isinstance(memo_series, pd.Series) else np.zeros(len(df), dtype=bool)
+    is_thousand = ((df['입금금액'].values > 0) & (df['입금금액'].values % 1000 == 0))
     
-    conds = [is_reward, is_thousand, df['입금금액'] > 0]
+    conds = [is_reward, is_thousand, df['입금금액'].values > 0]
     choices = ['리워드/보상금 입금', '소비자 정액입금(000단위)', '일반/기타 소액입금']
     df['세부입금구분'] = pd.Categorical(np.select(conds, choices, default='기타 입금'))
 
     for col in ['시도', '업종구분']:
         if col in df.columns:
-            df[col] = df[col].astype('category')
+            df[col] = df[col].astype(str).astype('category')
 
     gc.collect()
     return df
@@ -262,14 +261,12 @@ selected_status = st.sidebar.selectbox("🏷️ 판매점 상태구분", options
 
 period_mode = st.sidebar.radio("📅 기간 필터 모드", ["일자별 선택", "월별(연월) 선택"], horizontal=True)
 
-min_date_str = df['입금일자_str'].min()
-max_date_str = df['입금일자_str'].max()
+min_date = df['입금일자'].min()
+max_date = df['입금일자'].max()
 all_months = sorted([str(x) for x in df['입금연월'].unique()])
 
 if period_mode == "일자별 선택":
-    min_d = pd.to_datetime(min_date_str).date()
-    max_d = pd.to_datetime(max_date_str).date()
-    date_range = st.sidebar.date_input("조회 기간 설정", value=(min_d, max_d), min_value=min_d, max_value=max_d)
+    date_range = st.sidebar.date_input("조회 기간 설정", value=(min_date, max_date), min_value=min_date, max_value=max_date)
     selected_months = None
 else:
     date_range = None
@@ -296,9 +293,8 @@ if selected_status != '전체':
     mask &= (df['통합상태구분'].values == selected_status)
 
 if period_mode == "일자별 선택" and date_range and isinstance(date_range, (list, tuple)) and len(date_range) == 2:
-    s_start = date_range[0].strftime('%Y-%m-%d')
-    s_end = date_range[1].strftime('%Y-%m-%d')
-    mask &= (df['입금일자_str'].values >= s_start) & (df['입금일자_str'].values <= s_end)
+    d_start, d_end = date_range[0], date_range[1]
+    mask &= (df['입금일자'].values >= d_start) & (df['입금일자'].values <= d_end)
 elif period_mode == "월별(연월) 선택" and selected_months:
     mask &= df['입금연월'].isin(selected_months).values
 
@@ -318,7 +314,6 @@ if selected_sido:
 if selected_category:
     mask &= df['업종구분'].isin(selected_category).values
 
-# 뷰(View) 형태로 데이터 슬라이싱
 filtered_df = df[mask]
 
 # ---------------------------------------------------------
@@ -366,7 +361,7 @@ with kpi4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 9. 다차원 시각화 차트 섹션 (사전 집계 후 Plotly 전달 -> 메모리 소비 0)
+# 9. 다차원 시각화 차트 섹션 (사전 집계 전달로 안정화)
 # ---------------------------------------------------------
 st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
 
@@ -637,7 +632,7 @@ with tab_cat:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 10. 상세 거래 내역 데이터 테이블 (10개만 정확히 슬라이싱)
+# 10. 상세 거래 내역 데이터 테이블
 # ---------------------------------------------------------
 st.markdown(f"<h3 style='font-size:1.25rem;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#64748b; font-weight:500;'>(조회 결과: {len(filtered_df):,} 건)</span></h3>", unsafe_allow_html=True)
 
@@ -663,7 +658,6 @@ if st.session_state.curr_page < 1:
 start_idx = (st.session_state.curr_page - 1) * items_per_page
 end_idx = start_idx + items_per_page
 
-# 10개 행만 추출
 page_data = filtered_df[valid_cols].iloc[start_idx:end_idx]
 
 st.dataframe(
@@ -673,7 +667,7 @@ st.dataframe(
 )
 
 # --------------------------------------------------
-# 완벽 중앙 정렬 & 큰 숫자 줄바꿈 방지 버튼 페이징 (1 2 3 ... › »)
+# 완벽 중앙 정렬 & 큰 숫자 줄바꿈 방지 버튼 페이징
 # --------------------------------------------------
 page_block_size = 10
 start_p = ((st.session_state.curr_page - 1) // page_block_size) * page_block_size + 1
