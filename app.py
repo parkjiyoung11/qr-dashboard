@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. Custom CSS 및 Gmarket Sans 폰트 + 깔끔한 페이지네이션 UI 스타일
+# 2. Custom CSS (Gmarket Sans 폰트, 파일업로드 겹침 방지, 완벽 중앙 원형 페이지네이션)
 st.markdown("""
 <style>
     @font-face {
@@ -27,20 +27,23 @@ st.markdown("""
         font-style: normal;
     }
 
-    body, p, label, input, button, select, div[data-testid="stMarkdownContainer"] p {
+    /* 본문 텍스트에만 안전하게 GmarketSans 적용 (아이콘 충돌 방지) */
+    body, p, label, select, .stMarkdown p, div[data-testid="stMarkdownContainer"] p {
         font-family: 'GmarketSans', -apple-system, sans-serif !important;
         font-weight: 500;
         color: #1e293b;
     }
 
-    i, svg, [class*="st-"], [data-testid="stExpanderToggleIcon"], .material-icons {
-        font-family: inherit;
+    /* Streamlit 내부 아이콘/화살표 클래스(.arrow_right 등) 폰트 덮어쓰기 완전 방지 */
+    i, svg, [class*="st-icon"], [data-testid="stExpanderToggleIcon"], .material-icons, span[class*="icon"] {
+        font-family: inherit !important;
     }
 
     .main {
         background-color: #f8fafc;
     }
     
+    /* 대제목 */
     .dashboard-header, h1, h2, .section-bold-title {
         font-family: 'GmarketSans', sans-serif !important;
         font-weight: 700 !important;
@@ -68,6 +71,7 @@ st.markdown("""
         font-size: 1.05rem !important;
     }
 
+    /* KPI Metric Cards */
     .metric-card {
         background-color: #ffffff;
         border-radius: 14px;
@@ -108,42 +112,62 @@ st.markdown("""
         margin: 22px 0;
     }
 
-    /* 콤팩트 페이지네이션 버튼 커스텀 */
-    .pagination-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 6px;
-        margin-top: 15px;
-        margin-bottom: 25px;
+    /* --------------------------------------------------
+       페이지네이션 전용 세련된 원형 UI & 중앙 정렬 CSS
+    -------------------------------------------------- */
+    div[data-testid="stHorizontalBlock"]:has(button[key^="p_btn_"]) {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 6px !important;
+        margin-top: 15px !important;
+        width: 100% !important;
     }
-    .page-btn {
-        display: inline-flex;
-        justify-content: center;
-        align-items: center;
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        font-size: 0.95rem;
-        font-weight: 500;
-        color: #334155;
-        background-color: transparent;
-        border: 1px solid transparent;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-decoration: none !important;
+
+    div[data-testid="column"]:has(button[key^="p_btn_"]), 
+    div[data-testid="column"]:has(button[key="next_block"]), 
+    div[data-testid="column"]:has(button[key="last_page"]) {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: unset !important;
+        padding: 0 !important;
     }
-    .page-btn.active {
-        background-color: #262626;
+
+    /* 원형 버튼 공통 스타일 */
+    button[key^="p_btn_"], button[key="next_block"], button[key="last_page"] {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 50% !important;
+        min-height: 36px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-family: 'GmarketSans', sans-serif !important;
+        font-size: 0.92rem !important;
+        font-weight: 500 !important;
+        border: 1px solid #e2e8f0 !important;
+        background-color: #ffffff !important;
+        color: #334155 !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    /* 마우스 호버 시 */
+    button[key^="p_btn_"]:hover, button[key="next_block"]:hover, button[key="last_page"]:hover {
+        background-color: #f1f5f9 !important;
+        border-color: #cbd5e1 !important;
+        color: #0f172a !important;
+        transform: translateY(-1px);
+    }
+
+    /* 활성화(선택된) 번호 - 세련된 딥 차콜 원형 */
+    button[key^="p_btn_"][data-testid="stBaseButton-primary"] {
+        background-color: #1e293b !important;
         color: #ffffff !important;
-        font-weight: 700;
-    }
-    .page-btn.circle-border {
-        border: 1px solid #e2e8f0;
-        color: #475569;
-    }
-    .page-btn:hover:not(.active) {
-        background-color: #f1f5f9;
+        border-color: #1e293b !important;
+        font-weight: 700 !important;
+        box-shadow: 0 3px 8px rgba(30, 41, 59, 0.28) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -162,7 +186,7 @@ BANK_COLOR_MAP = {
     '기업은행': '#D6A2E8'
 }
 
-# 4. 데이터 로딩 및 속도 최적화 함수
+# 4. 데이터 로딩 및 날짜 변환 함수
 @st.cache_data
 def load_default_data():
     df = pd.read_parquet('merged_data.parquet')
@@ -181,7 +205,7 @@ st.markdown('<div class="dashboard-header">💳 QR플레이트 사업자계좌 �
 st.markdown('<div class="dashboard-subtitle">실시간 검색, 금액별/일자별 필터링 및 시각화 분석 리포트</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 6. 엑셀 파일 업로드 창
+# 6. 엑셀 파일 업로드 창 (버튼/토글 클릭 시 확장)
 # ---------------------------------------------------------
 with st.expander("📂 신규 데이터 갱신 (엑셀/CSV 파일 업로드)", expanded=False):
     st.markdown("<p style='font-size:0.95rem; color:#475569;'>💡 새로운 데이터가 있는 경우 파일 2개를 업로드하여 대시보드를 갱신할 수 있습니다.</p>", unsafe_allow_html=True)
@@ -248,7 +272,7 @@ selected_banks = st.sidebar.multiselect("🏛️ 입금은행", options=bank_opt
 selected_sido = st.sidebar.multiselect("🗺️ 지역(시/도)", options=sido_options, placeholder="선택하세요")
 selected_category = st.sidebar.multiselect("🏢 업종구분", options=category_options, placeholder="선택하세요")
 
-# --- 필터링 캐싱 적용 (속도 최적화) ---
+# --- 필터링 캐싱 함수 ---
 @st.cache_data
 def filter_dataframe(data, search_id, d_range, d_type, banks, sidos, cats):
     f_df = data.copy()
@@ -313,7 +337,7 @@ with kpi4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 9. 시각화 차트 섹션
+# 9. 시각화 차트 섹션 (모든 k단위 -> '만' 한글 단위 통일)
 # ---------------------------------------------------------
 st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
 
@@ -328,6 +352,23 @@ def apply_chart_theme(fig):
         margin=dict(l=20, r=20, t=40, b=20)
     )
     return fig
+
+# 축 한글 눈금 생성 도우미 함수 (k표기 완전 방지)
+def create_korean_ticks(max_value):
+    if max_value <= 0:
+        return [0], ["0"]
+    step = max(10000, int(max_value // 5))
+    step = int(math.ceil(step / 10000.0) * 10000)
+    vals = list(range(0, int(max_value) + step, step))
+    texts = []
+    for v in vals:
+        if v == 0:
+            texts.append("0")
+        elif v >= 10000:
+            texts.append(f"{v//10000}만")
+        else:
+            texts.append(f"{v:,}")
+    return vals, texts
 
 # Tab 1: 입금은행 점유율
 with tab1:
@@ -359,17 +400,15 @@ with tab1:
                 textfont=dict(family="GmarketSans", size=11)
             )
             
-            max_val = top10_bank_df['거래건수'].max() if not top10_bank_df.empty else 100000
-            step = max(20000, int(max_val // 5)) if max_val > 0 else 20000
-            tick_vals = list(range(0, int(max_val) + step, step))
-            tick_texts = [f"{v//10000}만" if v >= 10000 else (f"{v:,}" if v > 0 else "0") for v in tick_vals]
+            max_v = top10_bank_df['거래건수'].max() if not top10_bank_df.empty else 100000
+            t_vals, t_texts = create_korean_ticks(max_v)
             
             fig_bank_bar.update_layout(
                 yaxis={'categoryorder': 'total ascending'}, 
                 xaxis=dict(
                     tickmode='array',
-                    tickvals=tick_vals,
-                    ticktext=tick_texts
+                    tickvals=t_vals,
+                    ticktext=t_texts
                 ),
                 showlegend=False, 
                 height=400
@@ -417,7 +456,19 @@ with tab2:
             text='거래건수'
         )
         fig_sido.update_traces(texttemplate='%{text:,.0f}', textposition='outside', textfont=dict(family="GmarketSans"))
-        fig_sido.update_layout(height=400)
+        
+        # y축 단위 한글화
+        max_sido_v = sido_df['거래건수'].max() if not sido_df.empty else 100000
+        t_vals_sido, t_texts_sido = create_korean_ticks(max_sido_v)
+        
+        fig_sido.update_layout(
+            yaxis=dict(
+                tickmode='array',
+                tickvals=t_vals_sido,
+                ticktext=t_texts_sido
+            ),
+            height=400
+        )
         fig_sido = apply_chart_theme(fig_sido)
         st.plotly_chart(fig_sido, use_container_width=True)
     else:
@@ -438,7 +489,19 @@ with tab3:
             text='거래건수'
         )
         fig_cat.update_traces(texttemplate='%{text:,.0f}', textposition='outside', textfont=dict(family="GmarketSans"))
-        fig_cat.update_layout(height=400)
+        
+        # y축 단위 한글화
+        max_cat_v = cat_df['거래건수'].max() if not cat_df.empty else 100000
+        t_vals_cat, t_texts_cat = create_korean_ticks(max_cat_v)
+        
+        fig_cat.update_layout(
+            yaxis=dict(
+                tickmode='array',
+                tickvals=t_vals_cat,
+                ticktext=t_texts_cat
+            ),
+            height=400
+        )
         fig_cat = apply_chart_theme(fig_cat)
         st.plotly_chart(fig_cat, use_container_width=True)
     else:
@@ -447,7 +510,7 @@ with tab3:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 10. 상세 거래 내역 데이터 테이블 (속도 저하 없는 초고속 디스플레이)
+# 10. 상세 거래 내역 데이터 테이블 (완벽 중앙 정렬 원형 버튼 페이징)
 # ---------------------------------------------------------
 st.markdown(f"<h3 style='font-size:1.25rem;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#64748b; font-weight:500;'>(조회 결과: {len(filtered_df):,} 건)</span></h3>", unsafe_allow_html=True)
 
@@ -458,7 +521,6 @@ display_cols = [
 
 valid_cols = [col for col in display_cols if col in filtered_df.columns]
 
-# --- 초고속 10개 단위 슬라이싱 및 세션 상태 페이지 조절 ---
 items_per_page = 10
 total_items = len(filtered_df)
 total_pages = math.ceil(total_items / items_per_page) if total_items > 0 else 1
@@ -466,13 +528,11 @@ total_pages = math.ceil(total_items / items_per_page) if total_items > 0 else 1
 if 'curr_page' not in st.session_state:
     st.session_state.curr_page = 1
 
-# 페이지 번호 범위 제한
 if st.session_state.curr_page > total_pages:
     st.session_state.curr_page = total_pages
 if st.session_state.curr_page < 1:
     st.session_state.curr_page = 1
 
-# 현재 페이지의 10개만 정확하게 슬라이싱
 start_idx = (st.session_state.curr_page - 1) * items_per_page
 end_idx = start_idx + items_per_page
 page_data = filtered_df[valid_cols].iloc[start_idx:end_idx]
@@ -483,16 +543,17 @@ st.dataframe(
     height=390
 )
 
-# --- 요청하신 첨부 이미지와 동일한 콤팩트 페이지네이션 UI (1 2 3 4 5 6 7 8 9 10 > >>) ---
+# --- 10개 블록 원형 버튼 페이징 (1 2 3 4 5 6 7 8 9 10 › ») ---
 page_block_size = 10
 start_p = ((st.session_state.curr_page - 1) // page_block_size) * page_block_size + 1
 end_p = min(total_pages, start_p + page_block_size - 1)
 
 page_range = list(range(start_p, end_p + 1))
 
-# 버튼들을 촘촘하게 붙이기 위해 칼럼 너비 좁게 설정
-btn_cols = st.columns([1] * len(page_range) + [1, 1] + [8])
+# 버튼 그리드 생성
+btn_cols = st.columns(len(page_range) + 2)
 
+# 1. 숫자 원형 버튼들 (1 ~ 10)
 for idx, p_num in enumerate(page_range):
     with btn_cols[idx]:
         b_type = "primary" if p_num == st.session_state.curr_page else "secondary"
@@ -500,14 +561,22 @@ for idx, p_num in enumerate(page_range):
             st.session_state.curr_page = p_num
             st.rerun()
 
-# '>' 다음 10개 블록 이동
+# 2. '›' 다음 10개 블록 이동
 with btn_cols[len(page_range)]:
     if st.button("›", key="next_block", disabled=(end_p >= total_pages)):
         st.session_state.curr_page = min(total_pages, end_p + 1)
         st.rerun()
 
-# '>>' 맨 끝 페이지 이동
+# 3. '»' 맨 끝 이동
 with btn_cols[len(page_range) + 1]:
     if st.button("»", key="last_page", disabled=(st.session_state.curr_page == total_pages or total_pages == 0)):
         st.session_state.curr_page = total_pages
         st.rerun()
+
+# 페이지 정보 표기
+st.markdown(
+    f"<p style='text-align: center; color: #64748b; font-size: 0.9rem; margin-top: 14px;'>"
+    f"페이지 <b>{st.session_state.curr_page:,}</b> / {total_pages:,} (총 {total_items:,} 건)"
+    f"</p>",
+    unsafe_allow_html=True
+)
