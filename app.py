@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. 아이콘 글자 깨짐(arrow_right, upload) 완벽 방지 Custom CSS
+# 2. 아이콘 글자 깨짐 방지 & Gmarket Sans Custom CSS (큰 숫자 줄바꿈 방지)
 st.markdown("""
 <style>
     @font-face {
@@ -124,20 +124,23 @@ st.markdown("""
     }
 
     /* ------------------------------------------------------------------
-       원형 페이지네이션 버튼 디자인 (완벽 중앙 정렬)
+       페이지네이션 버튼 디자인 (큰 숫자 줄바꿈 방지 & 라운드 캡슐 UI)
     ------------------------------------------------------------------ */
     div[data-testid="stHorizontalBlock"] button[kind="secondary"],
     div[data-testid="stHorizontalBlock"] button[kind="primary"] {
-        width: 36px !important;
+        min-width: 36px !important;
+        width: auto !important;
         height: 36px !important;
         min-height: 36px !important;
-        border-radius: 50% !important;
-        padding: 0 !important;
-        display: flex !important;
+        border-radius: 18px !important;
+        padding: 0 10px !important;
+        display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
         font-family: 'GmarketSans', sans-serif !important;
-        font-size: 0.95rem !important;
+        font-size: 0.88rem !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
         border: 1px solid #e2e8f0 !important;
         background-color: #ffffff !important;
         color: #334155 !important;
@@ -173,15 +176,30 @@ BANK_COLOR_MAP = {
     '토스뱅크': '#70A1FF',
     '우리은행': '#81D4FA',
     'NH농협은행': '#A8E6CF',
-    '기업은행': '#D6A2E8'
+    '기업은행': '#D6A2E8',
+    '006(국민은행(구 한국주택은행))': '#FAB1A0',
+    '030(수협중앙회)': '#74B9FF'
 }
 
-# 4. 데이터 로딩 함수
+# 4. 데이터 로딩 및 명칭 변환 함수
 @st.cache_data
 def load_default_data():
     df = pd.read_parquet('merged_data.parquet')
     if '입금일자' in df.columns:
         df['입금일자'] = pd.to_datetime(df['입금일자']).dt.date
+    
+    # 006, 030 은행명 치환
+    if '입금은행' in df.columns:
+        bank_rename_map = {
+            '006': '006(국민은행(구 한국주택은행))',
+            '030': '030(수협중앙회)',
+            6: '006(국민은행(구 한국주택은행))',
+            30: '030(수협중앙회)',
+            '6': '006(국민은행(구 한국주택은행))',
+            '30': '030(수협중앙회)'
+        }
+        df['입금은행'] = df['입금은행'].replace(bank_rename_map)
+        
     return df
 
 try:
@@ -326,7 +344,7 @@ with kpi4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 9. 시각화 차트 섹션 (모든 축 + 컬러바 k단위 -> '만' 한글 완벽 통일)
+# 9. 시각화 차트 섹션
 # ---------------------------------------------------------
 st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
 
@@ -342,7 +360,6 @@ def apply_chart_theme(fig):
     )
     return fig
 
-# 한글 축 및 컬러바 눈금 생성 함수 (k 표기 완전 방지)
 def get_korean_axis_ticks(max_val):
     if max_val <= 0:
         return [0], ["0"]
@@ -423,7 +440,7 @@ with tab1:
     else:
         st.info("조회된 입금은행 데이터가 없습니다.")
 
-# Tab 2: 지역별 거래 현황 (컬러바 눈금까지 한글 '만' 적용)
+# Tab 2: 지역별 거래 현황
 with tab2:
     if '시도' in filtered_df.columns and not filtered_df.empty:
         sido_df = filtered_df['시도'].value_counts().reset_index()
@@ -461,7 +478,7 @@ with tab2:
     else:
         st.info("조회된 지역 데이터가 없습니다.")
 
-# Tab 3: 업종별 분포 (컬러바 눈금까지 한글 '만' 적용)
+# Tab 3: 업종별 분포
 with tab3:
     if '업종구분' in filtered_df.columns and not filtered_df.empty:
         cat_df = filtered_df['업종구분'].value_counts().reset_index()
@@ -502,7 +519,7 @@ with tab3:
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 10. 상세 거래 내역 데이터 테이블 (완벽 중앙 정렬 원형 버튼 페이징)
+# 10. 상세 거래 내역 데이터 테이블 (줄바꿈 없는 캡슐형 원형 버튼 페이징)
 # ---------------------------------------------------------
 st.markdown(f"<h3 style='font-size:1.25rem;'>📋 상세 거래 내역 목록 <span style='font-size:0.95rem; color:#64748b; font-weight:500;'>(조회 결과: {len(filtered_df):,} 건)</span></h3>", unsafe_allow_html=True)
 
@@ -536,7 +553,7 @@ st.dataframe(
 )
 
 # --------------------------------------------------
-# 완벽 중앙 정렬 원형 버튼 페이징 (1 2 3 4 5 6 7 8 9 10 › »)
+# 완벽 중앙 정렬 & 큰 숫자 줄바꿈 방지 버튼 페이징
 # --------------------------------------------------
 page_block_size = 10
 start_p = ((st.session_state.curr_page - 1) // page_block_size) * page_block_size + 1
@@ -545,16 +562,16 @@ end_p = min(total_pages, start_p + page_block_size - 1)
 page_range = list(range(start_p, end_p + 1))
 total_btns = len(page_range) + 2
 
-# 좌우 균형 있게 여백을 주어 완벽한 가운데 정렬
-side_spacer = max(1, (20 - total_btns) // 2)
-col_structure = [side_spacer] + [1] * total_btns + [side_spacer]
+# 여백을 부드럽게 조정하여 큰 숫자도 넉넉히 들어갈 수 있게 컬럼 비율 최적화
+side_spacer = max(1, (24 - total_btns * 2) // 2)
+col_structure = [side_spacer] + [1.8] * total_btns + [side_spacer]
 btn_cols = st.columns(col_structure)
 
-# 1. 숫자 원형 버튼들 (1 ~ 10)
+# 1. 숫자 원형/캡슐 버튼들
 for idx, p_num in enumerate(page_range):
     with btn_cols[idx + 1]:
         b_type = "primary" if p_num == st.session_state.curr_page else "secondary"
-        if st.button(f"{p_num}", key=f"p_btn_{p_num}", type=b_type):
+        if st.button(f"{p_num:,}", key=f"p_btn_{p_num}", type=b_type):
             st.session_state.curr_page = p_num
             st.rerun()
 
