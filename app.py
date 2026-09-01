@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. 100% 표준 호환 Custom CSS (아이콘 겹침 방지 + 원형 페이지네이션)
+# 2. 아이콘 글자 깨짐(arrow_right, upload) 완벽 방지 Custom CSS
 st.markdown("""
 <style>
     @font-face {
@@ -27,26 +27,19 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* 본문 폰트 적용 */
-    body, p, label, select, .stMarkdown p {
-        font-family: 'GmarketSans', -apple-system, sans-serif !important;
-        font-weight: 500;
-        color: #1e293b;
-    }
-
-    /* Streamlit 내부 아이콘/화살표 클래스(.arrow_right 등) 완전 보호 */
-    [data-testid="stExpander"] summary svg, 
-    [data-testid="stExpander"] summary span,
-    i, svg {
-        font-family: inherit !important;
-    }
-
+    /* 대시보드 메인 배경 */
     .main {
         background-color: #f8fafc;
     }
-    
+
+    /* 제목 및 본문 텍스트에만 안전하게 GmarketSans 적용 (Streamlit 아이콘 완전 보존) */
+    .dashboard-header, .dashboard-subtitle, .section-bold-title, 
+    .metric-card, .metric-title, .metric-value, .metric-unit,
+    h1, h2, h3, h4, h5, .stMarkdown p {
+        font-family: 'GmarketSans', -apple-system, sans-serif !important;
+    }
+
     .dashboard-header {
-        font-family: 'GmarketSans', sans-serif !important;
         font-size: 2.2rem;
         font-weight: 700 !important;
         color: #0f172a;
@@ -55,15 +48,13 @@ st.markdown("""
     }
 
     .dashboard-subtitle {
-        font-family: 'GmarketSans', sans-serif !important;
         color: #64748b;
         font-size: 1.0rem;
-        font-weight: 500;
+        font-weight: 500 !important;
         margin-bottom: 22px;
     }
 
     .section-bold-title {
-        font-family: 'GmarketSans', sans-serif !important;
         font-weight: 700 !important;
         color: #0f172a;
     }
@@ -74,7 +65,7 @@ st.markdown("""
         font-size: 1.05rem !important;
     }
 
-    /* KPI 카드 */
+    /* KPI Metric Cards */
     .metric-card {
         background-color: #ffffff;
         border-radius: 14px;
@@ -84,14 +75,12 @@ st.markdown("""
         text-align: left;
     }
     .metric-title {
-        font-family: 'GmarketSans', sans-serif !important;
         font-size: 1.0rem !important;
         font-weight: 500 !important;
         color: #475569;
         margin-bottom: 10px;
     }
     .metric-value {
-        font-family: 'GmarketSans', sans-serif !important;
         font-size: 1.85rem;
         font-weight: 700 !important;
         color: #0f172a;
@@ -115,35 +104,36 @@ st.markdown("""
         margin: 22px 0;
     }
 
-    /* -------------------------------------------
-       세련된 동그란 원형 페이지네이션 버튼 CSS
-    ------------------------------------------- */
-    div[data-testid="stHorizontalBlock"] button {
-        border-radius: 50% !important;
+    /* ----------------------------------------------------
+       원형 페이지네이션 버튼 디자인 및 가운데 정렬
+    ---------------------------------------------------- */
+    div[data-testid="stHorizontalBlock"] button[kind="secondary"],
+    div[data-testid="stHorizontalBlock"] button[kind="primary"] {
         width: 36px !important;
         height: 36px !important;
         min-height: 36px !important;
+        border-radius: 50% !important;
         padding: 0 !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         font-family: 'GmarketSans', sans-serif !important;
         font-size: 0.95rem !important;
-        font-weight: 500 !important;
         border: 1px solid #e2e8f0 !important;
         background-color: #ffffff !important;
         color: #334155 !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
         margin: 0 auto !important;
     }
 
-    div[data-testid="stHorizontalBlock"] button:hover {
+    div[data-testid="stHorizontalBlock"] button[kind="secondary"]:hover {
         background-color: #f1f5f9 !important;
         border-color: #cbd5e1 !important;
         color: #0f172a !important;
     }
 
-    div[data-testid="stHorizontalBlock"] button[data-testid="stBaseButton-primary"] {
+    /* 활성화된 선택 번호 - 세련된 딥 차콜 */
+    div[data-testid="stHorizontalBlock"] button[kind="primary"] {
         background-color: #1e293b !important;
         color: #ffffff !important;
         border-color: #1e293b !important;
@@ -317,7 +307,7 @@ with kpi4:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 9. 시각화 차트 섹션 (모든 영문 k단위 -> 한글 '만'으로 통일)
+# 9. 시각화 차트 섹션 (영문 k -> 한글 '만' 완벽 변환)
 # ---------------------------------------------------------
 st.markdown("<h2 class='section-bold-title' style='font-size: 1.55rem; margin-bottom: 12px;'>📊 거래 현황 다차원 시각화</h2>", unsafe_allow_html=True)
 
@@ -333,7 +323,7 @@ def apply_chart_theme(fig):
     )
     return fig
 
-# 한글 눈금 생성 함수
+# 한글 축 눈금 생성 도우미 함수
 def get_korean_axis_ticks(max_val):
     if max_val <= 0:
         return [0], ["0"]
@@ -524,8 +514,8 @@ end_p = min(total_pages, start_p + page_block_size - 1)
 page_range = list(range(start_p, end_p + 1))
 total_btns = len(page_range) + 2
 
-# 완벽 중앙 정렬: 좌우 여백(flex spacers) + 중앙 버튼 컬럼
-side_spacer = max(1, (16 - total_btns) // 2)
+# 좌우 균형 있게 여백을 주어 완벽한 가운데 정렬
+side_spacer = max(1, (20 - total_btns) // 2)
 col_structure = [side_spacer] + [1] * total_btns + [side_spacer]
 btn_cols = st.columns(col_structure)
 
@@ -551,7 +541,7 @@ with btn_cols[len(page_range) + 2]:
 
 # 페이지 정보 표기
 st.markdown(
-    f"<p style='text-align: center; color: #64748b; font-size: 0.9rem; margin-top: 14px;'>"
+    f"<p style='text-align: center; color: #64748b; font-size: 0.9rem; margin-top: 14px; font-family: GmarketSans;'>"
     f"페이지 <b>{st.session_state.curr_page:,}</b> / {total_pages:,} (총 {total_items:,} 건)"
     f"</p>",
     unsafe_allow_html=True
